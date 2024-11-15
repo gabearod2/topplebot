@@ -44,3 +44,28 @@ idf.py -p /dev/ttyUSB0 flash monitor
 ```
 
 You should now see the IMU data.
+
+
+
+```
+git clone --recurse-submodules https://github.com/gabearod2/topplebot.git
+cd topplebot
+sudo chmod 666 /dev/ttyUSB0
+docker run -it --rm --user espidf
+ 	--volume="/etc/timezone:/etc/timezone:ro" 	
+    -v "$(pwd)":/topplebot 	
+    -v /dev:/dev --privileged 	--workdir /topplebot	microros/esp-idf-microros:latest 	/bin/bash -c "idf.py menuconfig build flash monitor"
+```
+
+```
+docker run -it --rm --user espidf \
+    --volume="/etc/timezone:/etc/timezone:ro" \
+    -v "$(pwd)":/topplebot \
+    -v /dev:/dev --privileged \
+    --workdir /topplebot \
+    microros/esp-idf-microros:latest \
+    /bin/bash -c "idf.py menuconfig build flash monitor"
+```
+Ctrl Shift O
+micro ros agent:
+docker run -it --rm --net=host microros/micro-ros-agent:humble udp4 --port 8888 -v6
