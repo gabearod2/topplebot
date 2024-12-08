@@ -1,71 +1,63 @@
 # ToppleBot
 
-Software for ToppleBot, a scalable robot for space applications.
+Software for ToppleBot microcontroller (ESP32), a scalable robot for autonomous balancing applications.
 
 ## Attributions
 
+### Used Repositories
+
 Forked from [here](https://github.com/miniben-90/mpu9250) for IMU integration. Additionally configured to include [micro-ROS for ESP](https://github.com/micro-ROS/micro_ros_espidf_component.git). 
 
-## Calibration 
+### Calibration Resource
 
 See more information about calibration [here](https://github.com/miniben-90/mpu9250).
 
 ## Start-Up
 
-Build the project and flash it to the board, then run monitor tool to view serial output:
+Clone this repository:
 
 ```
-source ~/esp/v5.2.3/esp-idf/export.sh
-idf.py menuconfig
+git clone --recurse-submodules https://github.com/gabearod2/topplebot.git &&
+cd topplebot
 ```
 
-Select "Component Config", then "MPU9250 Calibration," and set it to calibrate for first run. If you do not have correct permissions, or do not know the name of the port:
+Run the following command to follow your USB connections, before connecting the ESP32.
 
 ```
 sudo dmesg --follow
-ls -l /dev/ttyUSB0
+```
+
+Connect the ESP32 and record the name of the port. Assign privileges to the port with the ESP32 connected to it, using /dev/ttyUSB0 here for example:
+```
 sudo chmod 666 /dev/ttyUSB0
 ```
 
-Then, build the project, and flash it onto your ESP32.
+We will first have to calibrated the IMU. We will tell the ToppleBot to calibrate first in the configuration menu. In the menu, select "Component Config", then "MPU9250 Calibration," and set it to calibrate for first run. Building and writing the project to the ESP32, again using /dev/ttyUSB0 port as an example:
 
 ```
-idf.py build
-idf.py -p /dev/ttyUSB0 flash monitor
-```
-
-(To exit the serial monitor, type `Ctrl-]`.)
-
-Then, to run the IMU after copying results in main.c, do the following. Select "Component Config", then "MPU9250 Calibration," and set it to NOT calibrate. Similarly as before:
-
-```
-idf.py build
-idf.py -p /dev/ttyUSB0 flash monitor
-```
-
-You should now see the IMU data.
-
-
-
-```
-git clone --recurse-submodules https://github.com/gabearod2/topplebot.git
-cd topplebot
-sudo chmod 666 /dev/ttyUSB0
 docker run -it --rm --user espidf
  	--volume="/etc/timezone:/etc/timezone:ro" 	
     -v "$(pwd)":/topplebot 	
-    -v /dev:/dev --privileged 	--workdir /topplebot	microros/esp-idf-microros:latest 	/bin/bash -c "idf.py menuconfig build flash monitor"
-```
-
-```
-docker run -it --rm --user espidf \
-    --volume="/etc/timezone:/etc/timezone:ro" \
-    -v "$(pwd)":/topplebot \
-    -v /dev:/dev --privileged \
-    --workdir /topplebot \
-    microros/esp-idf-microros:latest \
+    -v /dev:/dev --privileged
+    --workdir /topplebot	microros/esp-idf-microros:latest
     /bin/bash -c "idf.py menuconfig build flash monitor"
 ```
-Ctrl Shift O
-micro ros agent:
-docker run -it --rm --net=host microros/micro-ros-agent:humble udp4 --port 8888 -v6
+(To exit the serial monitor, type `Ctrl-]`.)
+
+If you do not know the IP adress of your control station, use the following command:
+
+```
+ifconfig
+```
+
+You will then have to set the corresponding calibration offsets to the main.c file. If you need to switch the GPIO pins or where you have connected the MPU9250, you can do this now as well. After that, you can again run the project, now configuring Micro-ROS in the menu. Once in the menu, select "Component Config", then "MPU9250 Calibration," and turn off the calibration. Then, select "micro-ROS settings", and enter the IP address of your control station, the Wifi SSID, and Wifi password. Quit the menu and let it build. Make sure you see that the ESP connects to the network. If not, check your SSID and password:
+
+```
+docker run -it --rm --user espidf
+ 	--volume="/etc/timezone:/etc/timezone:ro" 	
+    -v "$(pwd)":/topplebot 	
+    -v /dev:/dev --privileged
+    --workdir /topplebot	microros/esp-idf-microros:latest
+    /bin/bash -c "idf.py menuconfig build flash monitor"
+```
+If everything goes well, you will see the connection established and messages being sent. You can now disconnect the ESP32 and connect it to an external power source, micro-ROS has been configured on your ESP32!
