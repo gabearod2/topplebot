@@ -50,7 +50,7 @@ If you do not know the IP adress of your control station, use the following comm
 ifconfig
 ```
 
-You will then have to set the corresponding calibration offsets to the main.c file. If you need to switch the GPIO pins or where you have connected the MPU9250, you can do this now as well. After that, you can again run the project, now configuring Micro-ROS in the menu. Once in the menu, select "Component Config", then "MPU9250 Calibration," and turn off the calibration. Then, select "micro-ROS settings", and enter the IP address of your control station, the Wifi SSID, and Wifi password. Quit the menu and let it build. Make sure you see that the ESP connects to the network. If not, check your SSID and password:
+You will then have to set the corresponding calibration offsets to the main.c file. If you need to switch the GPIO pins of where you have connected the MPU9250, you can do this now as well. After that, you can again run the project, now configuring Micro-ROS in the menu. Once in the menu, select "Component Config", then "MPU9250 Calibration," and turn off the calibration. Then, select "micro-ROS settings", and enter the IP address of your control station, the Wifi SSID, and Wifi password. Quit the menu and let it build and write. Make sure you see that the ESP connects to the network. If not, check your SSID and password:
 
 ```
 docker run -it --rm --user espidf
