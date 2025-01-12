@@ -283,6 +283,15 @@ void ahrs_get_euler_in_degrees(float *heading, float *pitch, float *roll)
   *roll *= RAD_2_DEG;
 }
 
+void ahrs_get_quaternion(float *w, float *x, float *y, float *z)
+{
+  // The quaternion data
+  *w = q0;
+  *x = q1;
+  *y = q2;
+  *z = q3;
+}
+
 //====================================================================================================
 // END OF CODE
 //====================================================================================================
