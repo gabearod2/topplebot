@@ -44,7 +44,7 @@
 #include <rclc/executor.h>
 
 
-//static const char *TAG = "main";
+// static const char *TAG = "main";
 
 #ifdef CONFIG_MICRO_ROS_ESP_XRCE_DDS_MIDDLEWARE
 #include <rmw_microros/rmw_microros.h>
@@ -207,9 +207,20 @@ static void imu_micro_ros_task(void *arg)
 {
   // If in calibration mode, only calibrate
   #ifdef CONFIG_CALIBRATION_MODE
+
+  for (int i = 0; i < 3; i++) 
+  {
+    ESP_LOGI("calibration","Calibration iteration %d", i + 1);
+
     calibrate_gyro();
     calibrate_accel();
     calibrate_mag();
+
+    ESP_LOGI("calibration","Calibration iteration %d completed, wait three seconds for the next.", i + 1);
+    vTaskDelay(pdMS_TO_TICKS(3000));
+    
+  }
+
   #else
     //still want currently frequency for future control
     rcl_allocator_t allocator = rcl_get_default_allocator();
