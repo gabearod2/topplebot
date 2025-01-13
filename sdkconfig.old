@@ -1,3 +1,7 @@
+#
+# Automatically generated file. DO NOT EDIT.
+# Espressif IoT Development Framework (ESP-IDF) Project Configuration
+#
 CONFIG_SOC_BROWNOUT_RESET_SUPPORTED="Not determined"
 CONFIG_SOC_TWAI_BRP_DIV_SUPPORTED="Not determined"
 CONFIG_SOC_DPORT_WORKAROUND="Not determined"
@@ -318,7 +322,7 @@ CONFIG_ESP_WIFI_PASSWORD="lseresearch123"
 CONFIG_ESP_MAXIMUM_RETRY=5
 # end of WiFi Configuration
 
-CONFIG_MICRO_ROS_AGENT_IP="192.168.1.108"
+CONFIG_MICRO_ROS_AGENT_IP="192.168.0.46"
 CONFIG_MICRO_ROS_AGENT_PORT="8888"
 # end of micro-ROS Settings
 
@@ -1507,7 +1511,7 @@ CONFIG_WPA_MBEDTLS_TLS_CLIENT=y
 #
 # MPU9250 Configuration
 #
-# CONFIG_CALIBRATION_MODE is not set
+CONFIG_CALIBRATION_MODE=y
 CONFIG_SAMPLE_RATE_Hz=200
 # end of MPU9250 Configuration
 # end of Component config

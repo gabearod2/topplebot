@@ -202,7 +202,7 @@ void timer_callback(rcl_timer_t * timer, int64_t last_call_time)
  }
 }
 
-// Task to get 
+// Task Function
 static void imu_micro_ros_task(void *arg)
 {
   // If in calibration mode, only calibrate
@@ -216,56 +216,57 @@ static void imu_micro_ros_task(void *arg)
     rclc_support_t support;
     rcl_init_options_t init_options = rcl_get_zero_initialized_init_options();
     RCCHECK(rcl_init_options_init(&init_options, allocator));
-  #ifdef CONFIG_MICRO_ROS_ESP_XRCE_DDS_MIDDLEWARE
-    rmw_init_options_t* rmw_options = rcl_init_options_get_rmw_init_options(&init_options);
-    // Static Agent IP and port can be used instead of autodisvery.
-    RCCHECK(rmw_uros_options_set_udp_address(CONFIG_MICRO_ROS_AGENT_IP, CONFIG_MICRO_ROS_AGENT_PORT, rmw_options));
-    //RCCHECK(rmw_uros_discover_agent(rmw_options));
+
+    #ifdef CONFIG_MICRO_ROS_ESP_XRCE_DDS_MIDDLEWARECONFIG_CALIBRATION_MODE
+      rmw_init_options_t* rmw_options = rcl_init_options_get_rmw_init_options(&init_options);
+      // Static Agent IP and port can be used instead of autodisvery.
+      RCCHECK(rmw_uros_options_set_udp_address(CONFIG_MICRO_ROS_AGENT_IP, CONFIG_MICRO_ROS_AGENT_PORT, rmw_options));
+      //RCCHECK(rmw_uros_discover_agent(rmw_options));
+    #endif
+  
+    // create init_options
+    RCCHECK(rclc_support_init_with_options(&support, 0, NULL, &init_options, &allocator));
+
+    // create node
+    rcl_node_t node;
+    RCCHECK(rclc_node_init_default(&node, "esp32_imu_publisher", "", &support));
+
+    // create publisher
+    RCCHECK(rclc_publisher_init_default(
+      &publisher,
+      &node,
+      ROSIDL_GET_MSG_TYPE_SUPPORT(sensor_msgs, msg, Imu),
+      "imu_data"));
+
+
+    // create timer,
+    rcl_timer_t timer;
+    const unsigned int timer_timeout = 5; //5 ms timer for publishing
+    RCCHECK(rclc_timer_init_default(
+      &timer,
+      &support,
+      RCL_MS_TO_NS(timer_timeout),
+      timer_callback));
+
+    // create executor
+    rclc_executor_t executor;
+    RCCHECK(rclc_executor_init(&executor, &support.context, 1, &allocator));
+    RCCHECK(rclc_executor_add_timer(&executor, &timer));
+
+    while(1){
+      rclc_executor_spin_some(&executor, RCL_MS_TO_NS(100));
+      //usleep(10000);
+    }
+
+    // free resources
+    RCCHECK(rcl_publisher_fini(&publisher, &node));
+    RCCHECK(rcl_node_fini(&node));
   #endif
   
-  // create init_options
-  RCCHECK(rclc_support_init_with_options(&support, 0, NULL, &init_options, &allocator));
-
-  // create node
-  rcl_node_t node;
-  RCCHECK(rclc_node_init_default(&node, "esp32_imu_publisher", "", &support));
-
-  // create publisher
-  RCCHECK(rclc_publisher_init_default(
-    &publisher,
-    &node,
-    ROSIDL_GET_MSG_TYPE_SUPPORT(sensor_msgs, msg, Imu),
-    "imu_data"));
-
-
-  // create timer,
-  rcl_timer_t timer;
-  const unsigned int timer_timeout = 5; //5 ms timer for publishing
-  RCCHECK(rclc_timer_init_default(
-     &timer,
-     &support,
-     RCL_MS_TO_NS(timer_timeout),
-     timer_callback));
-
-  // create executor
-  rclc_executor_t executor;
-  RCCHECK(rclc_executor_init(&executor, &support.context, 1, &allocator));
-  RCCHECK(rclc_executor_add_timer(&executor, &timer));
-
-  while(1){
-     rclc_executor_spin_some(&executor, RCL_MS_TO_NS(100));
-     //usleep(10000);
-  }
-
-  // free resources
-  RCCHECK(rcl_publisher_fini(&publisher, &node));
-  RCCHECK(rcl_node_fini(&node));
-
-  // Exit
+  // Exit and clean up
   vTaskDelay(100 / portTICK_PERIOD_MS);
   i2c_driver_delete(I2C_MASTER_NUM);
-  vTaskDelete(NULL);
-  #endif
+  vTaskDelete(NULL); 
 }
 
 

@@ -1511,7 +1511,7 @@ CONFIG_WPA_MBEDTLS_TLS_CLIENT=y
 #
 # MPU9250 Configuration
 #
-# CONFIG_CALIBRATION_MODE is not set
+CONFIG_CALIBRATION_MODE=y
 CONFIG_SAMPLE_RATE_Hz=200
 # end of MPU9250 Configuration
 # end of Component config

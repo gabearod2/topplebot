@@ -2,5 +2,6 @@
     "idf.adapterTargetName": "esp32",
     "idf.flashType": "UART",
     "idf.port": "/dev/ttyUSB0",
-    "ros.distro": "humble"
+    "ros.distro": "humble",
+    "C_Cpp.dimInactiveRegions": false
 }
