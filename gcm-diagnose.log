@@ -1,0 +1,182 @@
+﻿Diagnose log at 2025-01-14T00:00:19Z
+
+AppPath: /usr/local/bin/git-credential-manager
+InstallDir: /usr/local/share/gcm-core/
+Version: 2.5.1+90d5f897f164a8fe07d2aa3bf7db439b0b4e03ea
+
+------------
+Diagnostic: Environment
+Skipped: False
+Success: True
+Exception: None
+Log:
+OSType: Linux
+OSVersion: Ubuntu 22.04.5 LTS
+Reading environment variables... OK
+ Variables:
+PWD=/home/gabe/workspaces/topplebot
+TERMINATOR_DBUS_NAME=net.tenshu.Terminator25ef4b219e3b005583550f2b0f9f990c3
+GNOME_SETUP_DISPLAY=:1
+MANAGERPID=2357
+SSH_AGENT_LAUNCHER=gnome-keyring
+JOURNAL_STREAM=8:20507
+XDG_CURRENT_DESKTOP=ubuntu:GNOME
+USER=gabe
+SESSION_MANAGER=local/gabe-XPS-13-9300:@/tmp/.ICE-unix/2511,unix/gabe-XPS-13-9300:/tmp/.ICE-unix/2511
+SYSTEMD_EXEC_PID=2541
+QT_ACCESSIBILITY=1
+QT_IM_MODULE=ibus
+LC_ALL=en_US.UTF-8
+GTK_MODULES=gail:atk-bridge
+LS_COLORS=rs=0:di=01;34:ln=01;36:mh=00:pi=40;33:so=01;35:do=01;35:bd=40;33;01:cd=40;33;01:or=40;31;01:mi=00:su=37;41:sg=30;43:ca=30;41:tw=30;42:ow=34;42:st=37;44:ex=01;32:*.tar=01;31:*.tgz=01;31:*.arc=01;31:*.arj=01;31:*.taz=01;31:*.lha=01;31:*.lz4=01;31:*.lzh=01;31:*.lzma=01;31:*.tlz=01;31:*.txz=01;31:*.tzo=01;31:*.t7z=01;31:*.zip=01;31:*.z=01;31:*.dz=01;31:*.gz=01;31:*.lrz=01;31:*.lz=01;31:*.lzo=01;31:*.xz=01;31:*.zst=01;31:*.tzst=01;31:*.bz2=01;31:*.bz=01;31:*.tbz=01;31:*.tbz2=01;31:*.tz=01;31:*.deb=01;31:*.rpm=01;31:*.jar=01;31:*.war=01;31:*.ear=01;31:*.sar=01;31:*.rar=01;31:*.alz=01;31:*.ace=01;31:*.zoo=01;31:*.cpio=01;31:*.7z=01;31:*.rz=01;31:*.cab=01;31:*.wim=01;31:*.swm=01;31:*.dwm=01;31:*.esd=01;31:*.jpg=01;35:*.jpeg=01;35:*.mjpg=01;35:*.mjpeg=01;35:*.gif=01;35:*.bmp=01;35:*.pbm=01;35:*.pgm=01;35:*.ppm=01;35:*.tga=01;35:*.xbm=01;35:*.xpm=01;35:*.tif=01;35:*.tiff=01;35:*.png=01;35:*.svg=01;35:*.svgz=01;35:*.mng=01;35:*.pcx=01;35:*.mov=01;35:*.mpg=01;35:*.mpeg=01;35:*.m2v=01;35:*.mkv=01;35:*.webm=01;35:*.webp=01;35:*.ogm=01;35:*.mp4=01;35:*.m4v=01;35:*.mp4v=01;35:*.vob=01;35:*.qt=01;35:*.nuv=01;35:*.wmv=01;35:*.asf=01;35:*.rm=01;35:*.rmvb=01;35:*.flc=01;35:*.avi=01;35:*.fli=01;35:*.flv=01;35:*.gl=01;35:*.dl=01;35:*.xcf=01;35:*.xwd=01;35:*.yuv=01;35:*.cgm=01;35:*.emf=01;35:*.ogv=01;35:*.ogx=01;35:*.aac=00;36:*.au=00;36:*.flac=00;36:*.m4a=00;36:*.mid=00;36:*.midi=00;36:*.mka=00;36:*.mp3=00;36:*.mpc=00;36:*.ogg=00;36:*.ra=00;36:*.wav=00;36:*.oga=00;36:*.opus=00;36:*.spx=00;36:*.xspf=00;36:
+LESSCLOSE=/usr/bin/lesspipe %s %s
+DISPLAY=:0
+SSH_AUTH_SOCK=/run/user/1000/keyring/ssh
+XMODIFIERS=@im=ibus
+GNOME_DESKTOP_SESSION_ID=this-is-deprecated
+GIT_TRACE2_PARENT_SID=139f2ad2-9f28-469f-b032-37e7c89191db
+INVOCATION_ID=f3a4de50920549eeb9b96da1e9aaca36
+TERMINATOR_UUID=urn:uuid:37581855-9181-4812-a326-08ab94d0a550
+_=/usr/bin/git
+GIO_LAUNCHED_DESKTOP_FILE=/usr/share/applications/terminator.desktop
+XDG_MENU_PREFIX=gnome-
+GJS_DEBUG_TOPICS=JS ERROR;JS LOG
+IBUS_DISABLE_SNOOPER=1
+GIT_EXEC_PATH=/usr/lib/git-core
+GIO_LAUNCHED_DESKTOP_FILE_PID=3861
+XDG_SESSION_CLASS=user
+PATH=/usr/lib/git-core:/home/gabe/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin:/snap/bin
+SHELL=/bin/bash
+IM_CONFIG_PHASE=1
+COLORTERM=truecolor
+DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus
+LANG=en_US.UTF-8
+SHLVL=1
+XDG_CONFIG_DIRS=/etc/xdg/xdg-ubuntu:/etc/xdg
+GNOME_SHELL_SESSION_MODE=ubuntu
+XDG_DATA_DIRS=/usr/share/ubuntu:/usr/local/share/:/usr/share/:/var/lib/snapd/desktop
+XDG_SESSION_TYPE=wayland
+VTE_VERSION=6800
+XDG_RUNTIME_DIR=/run/user/1000
+OLDPWD=/home/gabe
+XDG_SESSION_DESKTOP=ubuntu
+WAYLAND_DISPLAY=wayland-0
+GJS_DEBUG_OUTPUT=stderr
+USERNAME=gabe
+DESKTOP_SESSION=ubuntu
+GDMSESSION=ubuntu
+LESSOPEN=| /usr/bin/lesspipe %s
+TERM=xterm-256color
+TERMINATOR_DBUS_PATH=/net/tenshu/Terminator2
+HOME=/home/gabe
+XAUTHORITY=/run/user/1000/.mutter-Xwaylandauth.ROOC02
+LOGNAME=gabe
+
+
+------------
+Diagnostic: File system
+Skipped: False
+Success: True
+Exception: None
+Log:
+Temporary directory is '/tmp/'...
+Checking basic file I/O...
+Writing to temporary file '/tmp/2eae4928bbbaced97ac8313d'... OK
+Reading from temporary file '/tmp/2eae4928bbbaced97ac8313d'... OK
+Deleting temporary file '/tmp/2eae4928bbbaced97ac8313d'... OK
+Testing IFileSystem instance...
+UserHomePath: /home/gabe
+UserDataDirectoryPath: /home/gabe/.gcm
+GetCurrentDirectory(): /home/gabe/workspaces/topplebot
+
+------------
+Diagnostic: Networking
+Skipped: False
+Success: True
+Exception: None
+Log:
+Checking networking and HTTP stack...
+Creating HTTP client... OK
+IsNetworkAvailable: True
+Sending HEAD request to http://example.com...Sending HEAD request to https://example.com... OK
+ OK
+Acquiring free TCP port... OK
+Testing local HTTP loopback connections...
+Creating new HTTP listener for http://localhost:40505/... OK
+Waiting for loopback connection... OK
+Writing response... OK
+Waiting for response data... OK
+Loopback connection data OK
+
+------------
+Diagnostic: Git
+Skipped: False
+Success: True
+Exception: None
+Log:
+Getting Git version... OK
+Git version is '2.34.1'
+Locating current repository...Git repository at '/home/gabe/workspaces/topplebot/.git'
+ OK
+Listing all Git configuration... OK
+Git configuration:
+file:/home/gabe/.gitconfig	user.name=gabearod2
+file:/home/gabe/.gitconfig	user.email=gabearod2@gmail.com
+file:/home/gabe/.gitconfig	credential.helper=--replace-all
+file:/home/gabe/.gitconfig	credential.helper=
+file:/home/gabe/.gitconfig	credential.helper=/usr/local/bin/git-credential-manager
+file:/home/gabe/.gitconfig	credential.credentialstore=cache
+file:/home/gabe/.gitconfig	credential.https://dev.azure.com.usehttppath=true
+file:.git/config	core.repositoryformatversion=0
+file:.git/config	core.filemode=true
+file:.git/config	core.bare=false
+file:.git/config	core.logallrefupdates=true
+file:.git/config	submodule.active=.
+file:.git/config	remote.origin.url=https://github.com/gabearod2/topplebot.git
+file:.git/config	remote.origin.fetch=+refs/heads/*:refs/remotes/origin/*
+file:.git/config	branch.master.remote=origin
+file:.git/config	branch.master.merge=refs/heads/master
+file:.git/config	branch.master.vscode-merge-base=origin/master
+file:.git/config	submodule.components/micro_ros_espidf_component.url=https://github.com/micro-ROS/micro_ros_espidf_component
+
+
+------------
+Diagnostic: Credential storage
+Skipped: False
+Success: True
+Exception: None
+Log:
+ICredentialStore instance is of type: CredentialStore
+Writing test credential... OK
+Reading test credential... OK
+Deleting test credential... OK
+
+------------
+Diagnostic: Microsoft authentication (AAD/MSA)
+Skipped: False
+Success: True
+Exception: None
+Log:
+Broker is not enabled.
+Flow type is: Auto
+Gathering MSAL token cache data... OK
+CacheDirectory: /home/gabe/.local/.IdentityService
+CacheFileName: msal.cache
+CacheFilePath: /home/gabe/.local/.IdentityService/msal.cache
+KeyringCollection: 
+KeyringSchemaName: 
+KeyringSecretLabel: 
+KeyringAttribute1: (,)
+KeyringAttribute2: (,)
+Creating cache helper... OK
+Verifying MSAL token cache persistence... OK
+
+------------
+Diagnostic: GitHub API
+Skipped: False
+Success: True
+Exception: None
+Log:
+Using 'https://github.com/' as API target.
+Querying '/meta' endpoint... OK
+

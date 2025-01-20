@@ -62,17 +62,18 @@ sensor_msgs__msg__Imu msg;
 
 // Calibration constants
 calibration_t cal = {
- // magnetometer offset from calibration
- .mag_offset = {.x = -22.562500, .y = 40.042969, .z = -78.667969},
- .mag_scale = {.x = 1.027731, .y = 1.012845, .z = 0.961848},
 
- // accelerometer offsets from calibration
- .accel_offset = {.x = -0.011785, .y = 0.039968, .z = -0.404508},
- .accel_scale_lo = {.x = 0.995519, .y = 1.031251, .z = 0.828868},
- .accel_scale_hi = {.x = -0.998890, .y = -0.966249, .z = -1.204864},
+// magnetometer offset from calibration
+.mag_offset = {.x = 29.093750, .y = 50.800781, .z = -68.906250},
+.mag_scale = {.x = 0.988142, .y = 0.999372, .z = 1.012790},
 
- // gyroscope bias from calibration
- .gyro_bias_offset = {.x = -3.247107, .y = 1.918163, .z = -0.634698}
+// accelerometer offsets from calibration
+.accel_offset = {.x = -0.010017, .y = 0.056238, .z = -0.372841},
+.accel_scale_lo = {.x = 0.995519, .y = 1.031251, .z = 0.828868},
+.accel_scale_hi = {.x = -0.998890, .y = -0.966249, .z = -1.204864},
+
+// gyroscope bias from calibration, averaged, from 01/18
+.gyro_bias_offset = {.x = -3.210659, .y = 2.017682, .z = -0.724418}
 };
 
 /**
@@ -87,7 +88,7 @@ static void transform_accel_gyro(vector_t *v)
  float x = v->x;
  float y = v->y;
  float z = v->z;
-
+ 
 
  v->x = -x;
  v->y = -z;
@@ -218,7 +219,7 @@ static void imu_micro_ros_task(void *arg)
 
     ESP_LOGI("calibration","Calibration iteration %d completed, wait three seconds for the next.", i + 1);
     vTaskDelay(pdMS_TO_TICKS(3000));
-    
+
   }
 
   #else
@@ -228,7 +229,7 @@ static void imu_micro_ros_task(void *arg)
     rcl_init_options_t init_options = rcl_get_zero_initialized_init_options();
     RCCHECK(rcl_init_options_init(&init_options, allocator));
 
-    #ifdef CONFIG_MICRO_ROS_ESP_XRCE_DDS_MIDDLEWARECONFIG_CALIBRATION_MODE
+    #ifdef CONFIG_MICRO_ROS_ESP_XRCE_DDS_MIDDLEWARE
       rmw_init_options_t* rmw_options = rcl_init_options_get_rmw_init_options(&init_options);
       // Static Agent IP and port can be used instead of autodisvery.
       RCCHECK(rmw_uros_options_set_udp_address(CONFIG_MICRO_ROS_AGENT_IP, CONFIG_MICRO_ROS_AGENT_PORT, rmw_options));
