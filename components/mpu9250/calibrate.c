@@ -74,7 +74,7 @@ static void init_imu(void)
 
 const int NUM_GYRO_READS = 5000;
 
-void calibrate_gyro(void)
+void calibrate_gyro(vector_t *vg_sum_holder)
 {
   init_imu();
 
@@ -107,6 +107,9 @@ void calibrate_gyro(void)
   vg_sum.x /= -NUM_GYRO_READS;
   vg_sum.y /= -NUM_GYRO_READS;
   vg_sum.z /= -NUM_GYRO_READS;
+
+  // Assigning to the Holder
+  *vg_sum_holder = vg_sum;
 
   printf("    .gyro_bias_offset = {.x = %f, .y = %f, .z = %f}\n", vg_sum.x, vg_sum.y, vg_sum.z);
 }
@@ -221,7 +224,7 @@ void run_next_capture(int axis, int dir)
   calibrate_accel_axis(axis, dir);
 }
 
-void calibrate_accel(void)
+void calibrate_accel(vector_t *offset_holder, vector_t *scale_lo_holder, vector_t *scale_hi_holder)
 {
   init_imu();
 
@@ -244,6 +247,11 @@ void calibrate_accel(void)
   scale_hi.y /= NUM_ACCEL_READS;
   scale_hi.z /= NUM_ACCEL_READS;
 
+  // Assigning to the Holder
+  *offset_holder = offset;
+  *scale_lo_holder = scale_lo;
+  *scale_hi_holder = scale_hi;
+
   printf("    .accel_offset = {.x = %f, .y = %f, .z = %f},\n    .accel_scale_lo = {.x = %f, .y = %f, .z = %f},\n    .accel_scale_hi = {.x = %f, .y = %f, .z = %f},\n",
          offset.x, offset.y, offset.z,
          scale_lo.x, scale_lo.y, scale_lo.z,
@@ -265,7 +273,7 @@ void calibrate_accel(void)
 #define MIN(a, b) (a < b ? a : b)
 #define MAX(a, b) (a > b ? a : b)
 
-void calibrate_mag(void)
+void calibrate_mag(vector_t *v_min_holder, vector_t *v_max_holder, vector_t *v_scale_holder)
 {
 
   vector_t v_min = {
@@ -295,8 +303,10 @@ void calibrate_mag(void)
     v_max.y = MAX(v_max.y, vm.y);
     v_max.z = MAX(v_max.z, vm.z);
 
-    printf(" %0.3f    %0.3f    %0.3f    %0.3f   %0.3f   %0.3f   %0.3f   %0.3f   %0.3f       \r", vm.x, vm.y, vm.z, v_min.x, v_min.y, v_min.z, v_max.x, v_max.y, v_max.z);
-
+    // Clear the current line before printing a new one
+    if (i !=0){printf("\x1b[1F");} // ANSI escape code: Clear current line
+    printf(" %0.3f    %0.3f    %0.3f    %0.3f   %0.3f   %0.3f   %0.3f   %0.3f   %0.3f\n",
+           vm.x, vm.y, vm.z, v_min.x, v_min.y, v_min.z, v_max.x, v_max.y, v_max.z);
     vTaskDelay(10 / portTICK_PERIOD_MS);
   }
 
@@ -309,6 +319,11 @@ void calibrate_mag(void)
       .x = avg_radius / v_avg.x,
       .y = avg_radius / v_avg.y,
       .z = avg_radius / v_avg.z};
+
+  // Assigning to the Holder
+  *v_min_holder = v_min;
+  *v_max_holder = v_max;
+  *v_scale_holder = v_scale;
 
   printf("\n");
   printf("    .mag_offset = {.x = %f, .y = %f, .z = %f},\n", (v_min.x + v_max.x) / 2, (v_min.y + v_max.y) / 2, (v_min.z + v_max.z) / 2);

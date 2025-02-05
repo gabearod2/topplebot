@@ -3,5 +3,8 @@
     "idf.flashType": "UART",
     "idf.port": "/dev/ttyUSB0",
     "ros.distro": "humble",
-    "C_Cpp.dimInactiveRegions": false
+    "C_Cpp.dimInactiveRegions": false,
+    "files.associations": {
+        "*.ipp": "c"
+    }
 }

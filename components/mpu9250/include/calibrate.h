@@ -19,8 +19,8 @@
 #ifndef __CALIBRATE_H
 #define __CALIBRATE_H
 
-void calibrate_gyro(void);
-void calibrate_accel(void);
-void calibrate_mag(void);
+void calibrate_gyro(vector_t *vg_sum_holder);
+void calibrate_accel(vector_t *offset_holder, vector_t *scale_lo_holder, vector_t *scale_hi_holder);
+void calibrate_mag(vector_t *v_min_holder, vector_t *v_max_holder, vector_t *v_scale_holder);
 
 #endif

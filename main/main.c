@@ -44,7 +44,7 @@
 #include <rclc/executor.h>
 
 
-// static const char *TAG = "main";
+static const char *TAG = "main";
 
 #ifdef CONFIG_MICRO_ROS_ESP_XRCE_DDS_MIDDLEWARE
 #include <rmw_microros/rmw_microros.h>
@@ -187,7 +187,7 @@ void imu_callback(void)
     memset(msg.linear_acceleration_covariance, 0, sizeof(msg.linear_acceleration_covariance));
     
     // Publish the resulting ros message
-    printf("Publishing IMU Message to the imu_data Topic");
+    ESP_LOGI(TAG,"Publishing IMU Message to the imu_data Topic");
     RCSOFTCHECK(rcl_publish(&publisher, &msg, NULL));
  }
 }
@@ -199,7 +199,7 @@ void timer_callback(rcl_timer_t * timer, int64_t last_call_time)
  if (timer != NULL) 
  {
     imu_callback();
-    printf("Called imu callback");
+    ESP_LOGI(TAG,"Called imu callback");
  }
 }
 
@@ -209,20 +209,89 @@ static void imu_micro_ros_task(void *arg)
   // If in calibration mode, only calibrate
   #ifdef CONFIG_CALIBRATION_MODE
 
-  for (int i = 0; i < 3; i++) 
-  {
-    ESP_LOGI("calibration","Calibration iteration %d", i + 1);
+    vector_t vg_sum_sum = {0}, offset_holder_sum = {0}, scale_lo_holder_sum = {0}, scale_hi_holder_sum = {0};
+    vector_t v_min_holder_sum = {0}, v_max_holder_sum = {0}, v_scale_holder_sum = {0};
 
-    calibrate_gyro();
-    calibrate_accel();
-    calibrate_mag();
+    for (int i = 0; i < 3; i++) 
+    {
+      ESP_LOGI(TAG,"Calibration iteration %d", i + 1);
 
-    ESP_LOGI("calibration","Calibration iteration %d completed, wait three seconds for the next.", i + 1);
-    vTaskDelay(pdMS_TO_TICKS(3000));
+      vector_t vg_sum_holder, offset_holder, scale_lo_holder, scale_hi_holder;
+      vector_t v_min_holder, v_max_holder, v_scale_holder;
 
-  }
+      calibrate_gyro(&vg_sum_holder);
+      calibrate_accel(&offset_holder, &scale_lo_holder, &scale_hi_holder);
+      calibrate_mag(&v_min_holder, &v_max_holder, &v_scale_holder);
+
+      // AGGREGATING THE CALIBRATION VALUES
+      vg_sum_sum.x += vg_sum_holder.x;
+      vg_sum_sum.y += vg_sum_holder.y;
+      vg_sum_sum.z += vg_sum_holder.z;
+      offset_holder_sum.x += offset_holder.x;
+      offset_holder_sum.y += offset_holder.y;
+      offset_holder_sum.z += offset_holder.z;
+      scale_lo_holder_sum.x += scale_lo_holder.x;
+      scale_lo_holder_sum.y += scale_lo_holder.y;
+      scale_lo_holder_sum.z += scale_lo_holder.z;
+      scale_hi_holder_sum.x += scale_hi_holder.x;
+      scale_hi_holder_sum.y += scale_hi_holder.y;
+      scale_hi_holder_sum.z += scale_hi_holder.z;
+      v_min_holder_sum.x += v_min_holder.x;
+      v_min_holder_sum.y += v_min_holder.y;
+      v_min_holder_sum.z += v_min_holder.z;
+      v_max_holder_sum.x += v_max_holder.x;
+      v_max_holder_sum.y += v_max_holder.y;
+      v_max_holder_sum.z += v_max_holder.x;
+      v_scale_holder_sum.x += v_scale_holder.x;
+      v_scale_holder_sum.y += v_scale_holder.y;
+      v_scale_holder_sum.z += v_scale_holder.z;
+
+      if (i != 2) 
+      {
+        ESP_LOGI(TAG,"Calibration iteration %d completed, wait three seconds for the next.", i + 1);
+      }
+      else
+      {
+        ESP_LOGI(TAG,"Calibration iteration %d completed. The average of the 3 calibrations will be provided.", i + 1);
+      }
+      vTaskDelay(pdMS_TO_TICKS(3000));
+    }
+
+    // AVERAGING THE CALIBRATION VALUES
+    vector_t vg_sum_avg, offset_avg, scale_lo_avg, scale_hi_avg;
+    vector_t v_min_avg, v_max_avg, v_scale_avg;
+    vg_sum_avg.x = vg_sum_sum.x/3.0;
+    vg_sum_avg.y = vg_sum_sum.y/3.0;
+    vg_sum_avg.z = vg_sum_sum.z/3.0;
+    offset_avg.x = offset_holder_sum.x/3.0;
+    offset_avg.y = offset_holder_sum.y/3.0;
+    offset_avg.z = offset_holder_sum.z/3.0;
+    scale_lo_avg.x = scale_lo_holder_sum.x/3.0;
+    scale_lo_avg.y = scale_lo_holder_sum.y/3.0;
+    scale_lo_avg.z = scale_lo_holder_sum.z/3.0;
+    scale_hi_avg.x = scale_hi_holder_sum.x/3.0;
+    scale_hi_avg.y = scale_hi_holder_sum.y/3.0;
+    scale_hi_avg.z = scale_hi_holder_sum.z/3.0;
+    v_min_avg.x = v_min_holder_sum.x/3.0;
+    v_min_avg.y = v_min_holder_sum.y/3.0;
+    v_min_avg.z = v_min_holder_sum.z/3.0;
+    v_max_avg.x = v_max_holder_sum.x/3.0;
+    v_max_avg.y = v_max_holder_sum.y/3.0;
+    v_max_avg.z = v_max_holder_sum.z/3.0;
+    v_scale_avg.x = v_scale_holder_sum.x/3.0;
+    v_scale_avg.y = v_scale_holder_sum.y/3.0;
+    v_scale_avg.z = v_scale_holder_sum.z/3.0;
+
+    // Print the results:
+    ESP_LOGI(TAG,"    .mag_offset = {.x = %f, .y = %f, .z = %f}", (v_min_avg.x + v_max_avg.x) / 2, (v_min_avg.y + v_max_avg.y) / 2, (v_min_avg.z + v_max_avg.z) / 2);
+    ESP_LOGI(TAG,"    .mag_scale = {.x = %f, .y = %f, .z = %f}", v_scale_avg.x, v_scale_avg.y, v_scale_avg.z);
+    ESP_LOGI(TAG,"    .accel_offset = {.x = %f, .y = %f, .z = %f}", offset_avg.x, offset_avg.y, offset_avg.z);
+    ESP_LOGI(TAG,"    .accel_scale_lo = {.x = %f, .y = %f, .z = %f}", scale_lo_avg.x, scale_lo_avg.y, scale_lo_avg.z);
+    ESP_LOGI(TAG,"    .accel_scale_hi = {.x = %f, .y = %f, .z = %f}", scale_hi_avg.x, scale_hi_avg.y, scale_hi_avg.z);
+    ESP_LOGI(TAG,"    .gyro_bias_offset = {.x = %f, .y = %f, .z = %f}", vg_sum_avg.x, vg_sum_avg.y, vg_sum_avg.z);
 
   #else
+
     //still want currently frequency for future control
     rcl_allocator_t allocator = rcl_get_default_allocator();
     rclc_support_t support;
@@ -284,6 +353,7 @@ static void imu_micro_ros_task(void *arg)
 
 void app_main(void)
 {
+  // Comment out the following for checking the calibration
   #if defined(CONFIG_MICRO_ROS_ESP_NETIF_WLAN) || defined(CONFIG_MICRO_ROS_ESP_NETIF_ENET)
     ESP_ERROR_CHECK(uros_network_interface_initialize());
   #endif
