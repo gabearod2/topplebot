@@ -1,20 +1,20 @@
 /*****************************************************************************
-*                                                                        *
-*  Copyright 2018 Simon M. Werner                                        *
-*                                                                        *
-*  Licensed under the Apache License, Version 2.0 (the "License");       *
-*  you may not use this file except in compliance with the License.      *
-*  You may obtain a copy of the License at                               *
-*                                                                        *
-*    http://www.apache.org/licenses/LICENSE-2.0                          *
-*                                                                        *
-*  Unless required by applicable law or agreed to in writing, software   *
-*  distributed under the License is distributed on an "AS IS" BASIS,     *
+*                                                                           *
+*  Copyright 2018 Simon M. Werner                                           *
+*                                                                           *
+*  Licensed under the Apache License, Version 2.0 (the "License");          *
+*  you may not use this file except in compliance with the License.         *
+*  You may obtain a copy of the License at                                  *
+*                                                                           *
+*    http://www.apache.org/licenses/LICENSE-2.0                             *
+*                                                                           *
+*  Unless required by applicable law or agreed to in writing, software      *
+*  distributed under the License is distributed on an "AS IS" BASIS,        *
 *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. *
-*  See the License for the specific language governing permissions and   *
-*  limitations under the License.                                        *
-*                                                                        *
-*  Modifications made by Gabriel Rodriguez                               *
+*  See the License for the specific language governing permissions and      *
+*  limitations under the License.                                           *
+*                                                                           *
+*  Modifications made by Gabriel Rodriguez (2024-2025)                      *
 *****************************************************************************/
 
 #include <stdio.h>
@@ -43,22 +43,29 @@
 #include <rclc/rclc.h>
 #include <rclc/executor.h>
 
-
 static const char *TAG = "main";
 
 #ifdef CONFIG_MICRO_ROS_ESP_XRCE_DDS_MIDDLEWARE
 #include <rmw_microros/rmw_microros.h>
 #endif
 
-#define CONFIG_MICRO_ROS_APP_STACK 4000
+#define CONFIG_MICRO_ROS_APP_STACK 4096
 #define CONFIG_MICRO_ROS_APP_TASK_PRIO 5
+
+#define CONFIG_AHRS_APP_STACK 4096
+#define CONFIG_MAX_APP_TASK_PRIO 30
 
 #define RCCHECK(fn) { rcl_ret_t temp_rc = fn; if((temp_rc != RCL_RET_OK)){printf("Failed status on line %d: %d. Aborting.\n",__LINE__,(int)temp_rc);vTaskDelete(NULL);}}
 #define RCSOFTCHECK(fn) { rcl_ret_t temp_rc = fn; if((temp_rc != RCL_RET_OK)){printf("Failed status on line %d: %d. Continuing.\n",__LINE__,(int)temp_rc);}}
 #define I2C_MASTER_NUM I2C_NUM_0 /*!< I2C port number for master dev */
 
+// Publisher and Message Type
 rcl_publisher_t publisher;
 sensor_msgs__msg__Imu msg;
+
+// Define task handles
+TaskHandle_t ahrsTaskHandle = NULL;
+TaskHandle_t rosTaskHandle = NULL;
 
 // Calibration constants
 calibration_t cal = {
@@ -112,8 +119,15 @@ static void transform_mag(vector_t *v)
  v->z = -x;
 }
 
-// Function to publish the current data from the IMU
-void imu_callback(void)
+// Shared variables
+static double q_w, q_x, q_y, q_z;
+vector_t va, vg, vm;
+
+// Mutex to protect the shared data
+static SemaphoreHandle_t imu_message_mutex;
+
+// Task to run the AHRS algorithm as fast as possible.
+static void ahrs_task(void *arg)
 {
  // Initialize MPU with calibration (cal defined above) and algorithm frequency
  i2c_mpu9250_init(&cal);
@@ -122,9 +136,6 @@ void imu_callback(void)
 
  while (true)
  {
-    // Initializing the three vectors for sensor data
-    vector_t va, vg, vm; 
-    
     // Get the Accelerometer, Gyroscope and Magnetometer values.
     ESP_ERROR_CHECK(get_accel_gyro_mag(&va, &vg, &vm));
 
@@ -139,73 +150,81 @@ void imu_callback(void)
                 vm.x, vm.y, vm.z);
 
     // Getting temp
-    float temp;
-    ESP_ERROR_CHECK(get_temperature_celsius(&temp));
-  
+    // float temp;
+    // ESP_ERROR_CHECK(get_temperature_celsius(&temp));
     // Getting heading pitch and roll
-    float heading, pitch, roll;
-    ahrs_get_euler_in_degrees(&heading, &pitch, &roll);
-  
+    // float heading, pitch, roll;
+    // ahrs_get_euler_in_degrees(&heading, &pitch, &roll);
     // Normal printing log
     //ESP_LOGI(TAG, "Roll: %2.3f°, Pitch: %2.3f°, Yaw/Heading: %2.3f°,Temp %2.3f°C", roll, pitch, heading, temp);
     //ESP_LOGI(TAG, "Acceleration, x: %2.3f m/s, Acceleration, y: %2.3f m/s, Acceleration z: %2.3f m/s", va.x, va.y, va.z);
     //ESP_LOGI(TAG, "Roll Rate: %2.3f°/s, Pitch Rate: %2.3f°/s, Yaw Rate: %2.3f°/s", vg.x, vg.y, vg.z);
     //ESP_LOGI(TAG, "The Quaternion: w: %2.3f, x: %2.3f, y: %2.3f, z: %2.3f", q.w, q.x, q.y, q.z);
 
-    // Make the WDT happy
-    vTaskDelay(0);
-
-    // Getting the quaternion
+    // Getting the quaternion from the algorithm
     float w, x, y, z;
     ahrs_get_quaternion(&w, &x, &y, &z);
 
-    // If you need double precision
-    double w_d = w;
-    double x_d = x;
-    double y_d = y;
-    double z_d = z;
+    // Assinging the result to the shared doubles.
+    // Lock the mutex before updating shared data
+    if (xSemaphoreTake(imu_message_mutex, portMAX_DELAY))
+    {
+      q_w = w;
+      q_x = x;
+      q_y = y;
+      q_z = z;
+      xSemaphoreGive(imu_message_mutex);
+    }
 
-    // Assign Quaternion to message
-    msg.orientation.w = w_d;
-    msg.orientation.x = x_d;
-    msg.orientation.y = y_d;
-    msg.orientation.z = z_d;
+    taskYIELD();
+ }
+}
 
-    // Assign Angular Velocities to message
-    msg.angular_velocity.x = DEG2RAD(vg.x);
-    msg.angular_velocity.y = DEG2RAD(vg.y);
-    msg.angular_velocity.z = DEG2RAD(vg.z);
-    
-    // Assign Linear Accelerations to message
-    msg.linear_acceleration.x = va.x;
-    msg.linear_acceleration.y = va.y;
-    msg.linear_acceleration.z = va.z;
 
-    // Assign covariances as unkowns (they are not needed) to message
+void imu_callback(void)
+{
+    if (xSemaphoreTake(imu_message_mutex, portMAX_DELAY))
+    {
+        // Assign Quaternion to message
+        msg.orientation.w = q_w;
+        msg.orientation.x = q_x;
+        msg.orientation.y = q_y;
+        msg.orientation.z = q_z;
+
+        // Assign Angular Velocities to message
+        msg.angular_velocity.x = DEG2RAD(vg.x);
+        msg.angular_velocity.y = DEG2RAD(vg.y);
+        msg.angular_velocity.z = DEG2RAD(vg.z);
+
+        // Assign Linear Accelerations to message
+        msg.linear_acceleration.x = va.x;
+        msg.linear_acceleration.y = va.y;
+        msg.linear_acceleration.z = va.z;
+
+        xSemaphoreGive(imu_message_mutex);
+    }
+
+    // Assign covariances as unknowns (they are not needed)
     memset(msg.orientation_covariance, 0, sizeof(msg.orientation_covariance));
     memset(msg.angular_velocity_covariance, 0, sizeof(msg.angular_velocity_covariance));
     memset(msg.linear_acceleration_covariance, 0, sizeof(msg.linear_acceleration_covariance));
-    
-    // Publish the resulting ros message
-    ESP_LOGI(TAG,"Publishing IMU Message to the imu_data Topic");
-    RCSOFTCHECK(rcl_publish(&publisher, &msg, NULL));
- }
+
+    // Publish the message and check for errors
+    rcl_ret_t ret = rcl_publish(&publisher, &msg, NULL);
+    if (ret == RCL_RET_OK) {
+        ESP_LOGI(TAG, "IMU Message published successfully");
+    } else {
+        ESP_LOGI(TAG, "Failed to publish IMU Message");
+    }
 }
 
-// Timer to call the imu_callback on set intervals
-void timer_callback(rcl_timer_t * timer, int64_t last_call_time)
-{
- RCLC_UNUSED(last_call_time);
- if (timer != NULL) 
- {
-    imu_callback();
-    ESP_LOGI(TAG,"Called imu callback");
- }
-}
 
-// Task Function
-static void imu_micro_ros_task(void *arg)
+// Task Function for Micro-ROS
+static void micro_ros_task(void *arg)
 {
+  const TickType_t xFrequency = pdMS_TO_TICKS(20);  // 50 Hz
+  TickType_t xLastWakeTime = xTaskGetTickCount();
+
   // If in calibration mode, only calibrate
   #ifdef CONFIG_CALIBRATION_MODE
 
@@ -291,7 +310,8 @@ static void imu_micro_ros_task(void *arg)
     ESP_LOGI(TAG,"    .gyro_bias_offset = {.x = %f, .y = %f, .z = %f}", vg_sum_avg.x, vg_sum_avg.y, vg_sum_avg.z);
 
   #else
-
+    ESP_LOGI(TAG, "Starting micro_ros_task...");
+    
     //still want currently frequency for future control
     rcl_allocator_t allocator = rcl_get_default_allocator();
     rclc_support_t support;
@@ -319,33 +339,22 @@ static void imu_micro_ros_task(void *arg)
       ROSIDL_GET_MSG_TYPE_SUPPORT(sensor_msgs, msg, Imu),
       "imu_data"));
 
-
-    // create timer,
-    rcl_timer_t timer;
-    const unsigned int timer_timeout = 5; //5 ms timer for publishing
-    RCCHECK(rclc_timer_init_default(
-      &timer,
-      &support,
-      RCL_MS_TO_NS(timer_timeout),
-      timer_callback));
-
-    // create executor
-    rclc_executor_t executor;
-    RCCHECK(rclc_executor_init(&executor, &support.context, 1, &allocator));
-    RCCHECK(rclc_executor_add_timer(&executor, &timer));
+    ESP_LOGI(TAG, "micro_ros_task initialized. Entering loop...");
 
     while(1){
-      rclc_executor_spin_some(&executor, RCL_MS_TO_NS(100));
-      //usleep(10000);
+
+      ESP_LOGI(TAG, "Calling imu_callback()");
+      imu_callback();
+
+      ESP_LOGI(TAG, "imu_callback() finished. Waiting for next cycle...");
+      vTaskDelayUntil(&xLastWakeTime, xFrequency);  // Wait 20ms for next cycle
     }
 
-    // free resources
-    RCCHECK(rcl_publisher_fini(&publisher, &node));
-    RCCHECK(rcl_node_fini(&node));
   #endif
-  
+
   // Exit and clean up
-  vTaskDelay(100 / portTICK_PERIOD_MS);
+  RCCHECK(rcl_publisher_fini(&publisher, &node));
+  RCCHECK(rcl_node_fini(&node));
   i2c_driver_delete(I2C_MASTER_NUM);
   vTaskDelete(NULL); 
 }
@@ -353,16 +362,35 @@ static void imu_micro_ros_task(void *arg)
 
 void app_main(void)
 {
+  // Initialize the mutex
+  imu_message_mutex = xSemaphoreCreateMutex();
+  if (imu_message_mutex == NULL) {
+    ESP_LOGE(TAG, "Failed to create mutex!");
+    return;
+  }
+  
   // Comment out the following for checking the calibration
   #if defined(CONFIG_MICRO_ROS_ESP_NETIF_WLAN) || defined(CONFIG_MICRO_ROS_ESP_NETIF_ENET)
     ESP_ERROR_CHECK(uros_network_interface_initialize());
   #endif
  
- // start i2c task
- xTaskCreate(imu_micro_ros_task,
-     "imu_micro_ros_task",
-     CONFIG_MICRO_ROS_APP_STACK,
-     NULL,
-     CONFIG_MICRO_ROS_APP_TASK_PRIO,
-     NULL);
+  // AHRS Task
+  xTaskCreatePinnedToCore(
+    ahrs_task,
+    "ahrs_task",
+    CONFIG_AHRS_APP_STACK,
+    NULL,
+    CONFIG_MAX_APP_TASK_PRIO-1,
+    &ahrsTaskHandle,
+    tskNO_AFFINITY);
+
+  // Micro ROS Task
+  xTaskCreatePinnedToCore(
+    micro_ros_task,
+    "micro_ros_task",
+    CONFIG_MICRO_ROS_APP_STACK,
+    NULL,
+    CONFIG_MICRO_ROS_APP_TASK_PRIO,
+    &rosTaskHandle,
+    tskNO_AFFINITY);
 }
