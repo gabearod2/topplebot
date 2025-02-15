@@ -143,12 +143,12 @@ static SemaphoreHandle_t imu_message_mutex;
 // Function to initialize motor control pins and PWM
 void motor_init() {
   // Configure START pin
-  gpio_pad_select_gpio(START_PIN);
+  esp_rom_gpio_pad_select_gpio(START_PIN);
   gpio_set_direction(START_PIN, GPIO_MODE_OUTPUT);
   gpio_set_level(START_PIN, 1); // Start HIGH
 
   // Configure DIR pin
-  gpio_pad_select_gpio(DIR_PIN);
+  esp_rom_gpio_pad_select_gpio(DIR_PIN);
   gpio_set_direction(DIR_PIN, GPIO_MODE_OUTPUT);
   gpio_set_level(DIR_PIN, 0); // Default forward
 
@@ -441,6 +441,8 @@ void app_main(void)
       ESP_LOGE(TAG, "Failed to create mutex!");
       return;
     }
+
+    motor_init();
 
     // Set up the wifi connection
     #if defined(CONFIG_MICRO_ROS_ESP_NETIF_WLAN) || defined(CONFIG_MICRO_ROS_ESP_NETIF_ENET)
