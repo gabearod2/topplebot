@@ -53,6 +53,7 @@ static const char *TAG = "main";
 #define CONFIG_MICRO_ROS_APP_TASK_PRIO 5
 
 #define CONFIG_AHRS_APP_STACK 4096
+#define CONFIG_CALIBRATION_APP_STACK 4096
 #define CONFIG_MAX_APP_TASK_PRIO 30
 
 #define RCCHECK(fn) { rcl_ret_t temp_rc = fn; if((temp_rc != RCL_RET_OK)){printf("Failed status on line %d: %d. Aborting.\n",__LINE__,(int)temp_rc);vTaskDelete(NULL);}}
@@ -66,6 +67,7 @@ sensor_msgs__msg__Imu msg;
 // Define task handles
 TaskHandle_t ahrsTaskHandle = NULL;
 TaskHandle_t rosTaskHandle = NULL;
+TaskHandle_t calibrationTaskHandle = NULL;
 
 // Calibration constants
 calibration_t cal = {
@@ -149,18 +151,6 @@ static void ahrs_task(void *arg)
                 va.x, va.y, va.z,
                 vm.x, vm.y, vm.z);
 
-    // Getting temp
-    // float temp;
-    // ESP_ERROR_CHECK(get_temperature_celsius(&temp));
-    // Getting heading pitch and roll
-    // float heading, pitch, roll;
-    // ahrs_get_euler_in_degrees(&heading, &pitch, &roll);
-    // Normal printing log
-    //ESP_LOGI(TAG, "Roll: %2.3f°, Pitch: %2.3f°, Yaw/Heading: %2.3f°,Temp %2.3f°C", roll, pitch, heading, temp);
-    //ESP_LOGI(TAG, "Acceleration, x: %2.3f m/s, Acceleration, y: %2.3f m/s, Acceleration z: %2.3f m/s", va.x, va.y, va.z);
-    //ESP_LOGI(TAG, "Roll Rate: %2.3f°/s, Pitch Rate: %2.3f°/s, Yaw Rate: %2.3f°/s", vg.x, vg.y, vg.z);
-    //ESP_LOGI(TAG, "The Quaternion: w: %2.3f, x: %2.3f, y: %2.3f, z: %2.3f", q.w, q.x, q.y, q.z);
-
     // Getting the quaternion from the algorithm
     float w, x, y, z;
     ahrs_get_quaternion(&w, &x, &y, &z);
@@ -175,11 +165,9 @@ static void ahrs_task(void *arg)
       q_z = z;
       xSemaphoreGive(imu_message_mutex);
     }
-
     taskYIELD();
  }
 }
-
 
 void imu_callback(void)
 {
@@ -218,105 +206,19 @@ void imu_callback(void)
     }
 }
 
-
-// Task Function for Micro-ROS
+// Task Function for Micro-ROS and Calibration
 static void micro_ros_task(void *arg)
 {
   const TickType_t xFrequency = pdMS_TO_TICKS(20);  // 50 Hz
   TickType_t xLastWakeTime = xTaskGetTickCount();
 
-  // If in calibration mode, only calibrate
-  #ifdef CONFIG_CALIBRATION_MODE
-
-    vector_t vg_sum_sum = {0}, offset_holder_sum = {0}, scale_lo_holder_sum = {0}, scale_hi_holder_sum = {0};
-    vector_t v_min_holder_sum = {0}, v_max_holder_sum = {0}, v_scale_holder_sum = {0};
-
-    for (int i = 0; i < 3; i++) 
-    {
-      ESP_LOGI(TAG,"Calibration iteration %d", i + 1);
-
-      vector_t vg_sum_holder, offset_holder, scale_lo_holder, scale_hi_holder;
-      vector_t v_min_holder, v_max_holder, v_scale_holder;
-
-      calibrate_gyro(&vg_sum_holder);
-      calibrate_accel(&offset_holder, &scale_lo_holder, &scale_hi_holder);
-      calibrate_mag(&v_min_holder, &v_max_holder, &v_scale_holder);
-
-      // AGGREGATING THE CALIBRATION VALUES
-      vg_sum_sum.x += vg_sum_holder.x;
-      vg_sum_sum.y += vg_sum_holder.y;
-      vg_sum_sum.z += vg_sum_holder.z;
-      offset_holder_sum.x += offset_holder.x;
-      offset_holder_sum.y += offset_holder.y;
-      offset_holder_sum.z += offset_holder.z;
-      scale_lo_holder_sum.x += scale_lo_holder.x;
-      scale_lo_holder_sum.y += scale_lo_holder.y;
-      scale_lo_holder_sum.z += scale_lo_holder.z;
-      scale_hi_holder_sum.x += scale_hi_holder.x;
-      scale_hi_holder_sum.y += scale_hi_holder.y;
-      scale_hi_holder_sum.z += scale_hi_holder.z;
-      v_min_holder_sum.x += v_min_holder.x;
-      v_min_holder_sum.y += v_min_holder.y;
-      v_min_holder_sum.z += v_min_holder.z;
-      v_max_holder_sum.x += v_max_holder.x;
-      v_max_holder_sum.y += v_max_holder.y;
-      v_max_holder_sum.z += v_max_holder.x;
-      v_scale_holder_sum.x += v_scale_holder.x;
-      v_scale_holder_sum.y += v_scale_holder.y;
-      v_scale_holder_sum.z += v_scale_holder.z;
-
-      if (i != 2) 
-      {
-        ESP_LOGI(TAG,"Calibration iteration %d completed, wait three seconds for the next.", i + 1);
-      }
-      else
-      {
-        ESP_LOGI(TAG,"Calibration iteration %d completed. The average of the 3 calibrations will be provided.", i + 1);
-      }
-      vTaskDelay(pdMS_TO_TICKS(3000));
-    }
-
-    // AVERAGING THE CALIBRATION VALUES
-    vector_t vg_sum_avg, offset_avg, scale_lo_avg, scale_hi_avg;
-    vector_t v_min_avg, v_max_avg, v_scale_avg;
-    vg_sum_avg.x = vg_sum_sum.x/3.0;
-    vg_sum_avg.y = vg_sum_sum.y/3.0;
-    vg_sum_avg.z = vg_sum_sum.z/3.0;
-    offset_avg.x = offset_holder_sum.x/3.0;
-    offset_avg.y = offset_holder_sum.y/3.0;
-    offset_avg.z = offset_holder_sum.z/3.0;
-    scale_lo_avg.x = scale_lo_holder_sum.x/3.0;
-    scale_lo_avg.y = scale_lo_holder_sum.y/3.0;
-    scale_lo_avg.z = scale_lo_holder_sum.z/3.0;
-    scale_hi_avg.x = scale_hi_holder_sum.x/3.0;
-    scale_hi_avg.y = scale_hi_holder_sum.y/3.0;
-    scale_hi_avg.z = scale_hi_holder_sum.z/3.0;
-    v_min_avg.x = v_min_holder_sum.x/3.0;
-    v_min_avg.y = v_min_holder_sum.y/3.0;
-    v_min_avg.z = v_min_holder_sum.z/3.0;
-    v_max_avg.x = v_max_holder_sum.x/3.0;
-    v_max_avg.y = v_max_holder_sum.y/3.0;
-    v_max_avg.z = v_max_holder_sum.z/3.0;
-    v_scale_avg.x = v_scale_holder_sum.x/3.0;
-    v_scale_avg.y = v_scale_holder_sum.y/3.0;
-    v_scale_avg.z = v_scale_holder_sum.z/3.0;
-
-    // Print the results:
-    ESP_LOGI(TAG,"    .mag_offset = {.x = %f, .y = %f, .z = %f}", (v_min_avg.x + v_max_avg.x) / 2, (v_min_avg.y + v_max_avg.y) / 2, (v_min_avg.z + v_max_avg.z) / 2);
-    ESP_LOGI(TAG,"    .mag_scale = {.x = %f, .y = %f, .z = %f}", v_scale_avg.x, v_scale_avg.y, v_scale_avg.z);
-    ESP_LOGI(TAG,"    .accel_offset = {.x = %f, .y = %f, .z = %f}", offset_avg.x, offset_avg.y, offset_avg.z);
-    ESP_LOGI(TAG,"    .accel_scale_lo = {.x = %f, .y = %f, .z = %f}", scale_lo_avg.x, scale_lo_avg.y, scale_lo_avg.z);
-    ESP_LOGI(TAG,"    .accel_scale_hi = {.x = %f, .y = %f, .z = %f}", scale_hi_avg.x, scale_hi_avg.y, scale_hi_avg.z);
-    ESP_LOGI(TAG,"    .gyro_bias_offset = {.x = %f, .y = %f, .z = %f}", vg_sum_avg.x, vg_sum_avg.y, vg_sum_avg.z);
-
-  #else
-    ESP_LOGI(TAG, "Starting micro_ros_task...");
+  ESP_LOGI(TAG, "Starting micro_ros_task...");
     
-    //still want currently frequency for future control
-    rcl_allocator_t allocator = rcl_get_default_allocator();
-    rclc_support_t support;
-    rcl_init_options_t init_options = rcl_get_zero_initialized_init_options();
-    RCCHECK(rcl_init_options_init(&init_options, allocator));
+  //still want currently frequency for future control
+  rcl_allocator_t allocator = rcl_get_default_allocator();
+  rclc_support_t support;
+  rcl_init_options_t init_options = rcl_get_zero_initialized_init_options();
+  RCCHECK(rcl_init_options_init(&init_options, allocator));
 
     #ifdef CONFIG_MICRO_ROS_ESP_XRCE_DDS_MIDDLEWARE
       rmw_init_options_t* rmw_options = rcl_init_options_get_rmw_init_options(&init_options);
@@ -350,8 +252,6 @@ static void micro_ros_task(void *arg)
       vTaskDelayUntil(&xLastWakeTime, xFrequency);  // Wait 20ms for next cycle
     }
 
-  #endif
-
   // Exit and clean up
   RCCHECK(rcl_publisher_fini(&publisher, &node));
   RCCHECK(rcl_node_fini(&node));
@@ -359,38 +259,145 @@ static void micro_ros_task(void *arg)
   vTaskDelete(NULL); 
 }
 
+static void calibration_task(void *arg)
+{
+  ESP_LOGI(TAG, "Calibration mode is enabled. Running calibration...");
+
+  // Initialize MPU with calibration (cal defined above) and algorithm frequency
+  i2c_mpu9250_init(&cal);
+  ahrs_init(SAMPLE_FREQ_Hz, 0.8);
+  memset(&msg, 0, sizeof(msg)); 
+  vector_t vg_sum_sum = {0}, offset_holder_sum = {0}, scale_lo_holder_sum = {0}, scale_hi_holder_sum = {0};
+  vector_t v_min_holder_sum = {0}, v_max_holder_sum = {0}, v_scale_holder_sum = {0};
+
+  for (int i = 0; i < 3; i++) 
+  {
+    ESP_LOGI(TAG,"Calibration iteration %d", i + 1);
+
+    vector_t vg_sum_holder, offset_holder, scale_lo_holder, scale_hi_holder;
+    vector_t v_min_holder, v_max_holder, v_scale_holder;
+
+    calibrate_gyro(&vg_sum_holder);
+    calibrate_accel(&offset_holder, &scale_lo_holder, &scale_hi_holder);
+    calibrate_mag(&v_min_holder, &v_max_holder, &v_scale_holder);
+
+    // AGGREGATING THE CALIBRATION VALUES
+    vg_sum_sum.x += vg_sum_holder.x;
+    vg_sum_sum.y += vg_sum_holder.y;
+    vg_sum_sum.z += vg_sum_holder.z;
+    offset_holder_sum.x += offset_holder.x;
+    offset_holder_sum.y += offset_holder.y;
+    offset_holder_sum.z += offset_holder.z;
+    scale_lo_holder_sum.x += scale_lo_holder.x;
+    scale_lo_holder_sum.y += scale_lo_holder.y;
+    scale_lo_holder_sum.z += scale_lo_holder.z;
+    scale_hi_holder_sum.x += scale_hi_holder.x;
+    scale_hi_holder_sum.y += scale_hi_holder.y;
+    scale_hi_holder_sum.z += scale_hi_holder.z;
+    v_min_holder_sum.x += v_min_holder.x;
+    v_min_holder_sum.y += v_min_holder.y;
+    v_min_holder_sum.z += v_min_holder.z;
+    v_max_holder_sum.x += v_max_holder.x;
+    v_max_holder_sum.y += v_max_holder.y;
+    v_max_holder_sum.z += v_max_holder.x;
+    v_scale_holder_sum.x += v_scale_holder.x;
+    v_scale_holder_sum.y += v_scale_holder.y;
+    v_scale_holder_sum.z += v_scale_holder.z;
+
+    if (i != 2) 
+    {
+      ESP_LOGI(TAG,"Calibration iteration %d completed, wait three seconds for the next.", i + 1);
+    }
+    else
+    {
+      ESP_LOGI(TAG,"Calibration iteration %d completed. The average of the 3 calibrations will be provided.", i + 1);
+    }
+    vTaskDelay(pdMS_TO_TICKS(3000));
+  }
+
+  // AVERAGING THE CALIBRATION VALUES
+  vector_t vg_sum_avg, offset_avg, scale_lo_avg, scale_hi_avg;
+  vector_t v_min_avg, v_max_avg, v_scale_avg;
+  vg_sum_avg.x = vg_sum_sum.x/3.0;
+  vg_sum_avg.y = vg_sum_sum.y/3.0;
+  vg_sum_avg.z = vg_sum_sum.z/3.0;
+  offset_avg.x = offset_holder_sum.x/3.0;
+  offset_avg.y = offset_holder_sum.y/3.0;
+  offset_avg.z = offset_holder_sum.z/3.0;
+  scale_lo_avg.x = scale_lo_holder_sum.x/3.0;
+  scale_lo_avg.y = scale_lo_holder_sum.y/3.0;
+  scale_lo_avg.z = scale_lo_holder_sum.z/3.0;
+  scale_hi_avg.x = scale_hi_holder_sum.x/3.0;
+  scale_hi_avg.y = scale_hi_holder_sum.y/3.0;
+  scale_hi_avg.z = scale_hi_holder_sum.z/3.0;
+  v_min_avg.x = v_min_holder_sum.x/3.0;
+  v_min_avg.y = v_min_holder_sum.y/3.0;
+  v_min_avg.z = v_min_holder_sum.z/3.0;
+  v_max_avg.x = v_max_holder_sum.x/3.0;
+  v_max_avg.y = v_max_holder_sum.y/3.0;
+  v_max_avg.z = v_max_holder_sum.z/3.0;
+  v_scale_avg.x = v_scale_holder_sum.x/3.0;
+  v_scale_avg.y = v_scale_holder_sum.y/3.0;
+  v_scale_avg.z = v_scale_holder_sum.z/3.0;
+
+  // Print the results:
+  ESP_LOGI(TAG,"    .mag_offset = {.x = %f, .y = %f, .z = %f}", (v_min_avg.x + v_max_avg.x) / 2, (v_min_avg.y + v_max_avg.y) / 2, (v_min_avg.z + v_max_avg.z) / 2);
+  ESP_LOGI(TAG,"    .mag_scale = {.x = %f, .y = %f, .z = %f}", v_scale_avg.x, v_scale_avg.y, v_scale_avg.z);
+  ESP_LOGI(TAG,"    .accel_offset = {.x = %f, .y = %f, .z = %f}", offset_avg.x, offset_avg.y, offset_avg.z);
+  ESP_LOGI(TAG,"    .accel_scale_lo = {.x = %f, .y = %f, .z = %f}", scale_lo_avg.x, scale_lo_avg.y, scale_lo_avg.z);
+  ESP_LOGI(TAG,"    .accel_scale_hi = {.x = %f, .y = %f, .z = %f}", scale_hi_avg.x, scale_hi_avg.y, scale_hi_avg.z);
+  ESP_LOGI(TAG,"    .gyro_bias_offset = {.x = %f, .y = %f, .z = %f}", vg_sum_avg.x, vg_sum_avg.y, vg_sum_avg.z);
+
+  i2c_driver_delete(I2C_MASTER_NUM);
+  vTaskDelete(NULL);
+}
 
 void app_main(void)
 {
-  // Initialize the mutex
-  imu_message_mutex = xSemaphoreCreateMutex();
-  if (imu_message_mutex == NULL) {
-    ESP_LOGE(TAG, "Failed to create mutex!");
-    return;
-  }
-  
-  // Comment out the following for checking the calibration
-  #if defined(CONFIG_MICRO_ROS_ESP_NETIF_WLAN) || defined(CONFIG_MICRO_ROS_ESP_NETIF_ENET)
-    ESP_ERROR_CHECK(uros_network_interface_initialize());
-  #endif
- 
-  // AHRS Task
-  xTaskCreatePinnedToCore(
-    ahrs_task,
-    "ahrs_task",
-    CONFIG_AHRS_APP_STACK,
-    NULL,
-    CONFIG_MAX_APP_TASK_PRIO-1,
-    &ahrsTaskHandle,
-    tskNO_AFFINITY);
+  // If in calibration mode...
+  #if defined(CONFIG_CALIBRATION_MODE)
+    // Calibration Task
+    xTaskCreatePinnedToCore(
+      calibration_task,
+      "calibration_task",
+      CONFIG_CALIBRATION_APP_STACK,
+      NULL,
+      CONFIG_MAX_APP_TASK_PRIO-1,
+      &calibrationTaskHandle,
+      tskNO_AFFINITY);
 
-  // Micro ROS Task
-  xTaskCreatePinnedToCore(
-    micro_ros_task,
-    "micro_ros_task",
-    CONFIG_MICRO_ROS_APP_STACK,
-    NULL,
-    CONFIG_MICRO_ROS_APP_TASK_PRIO,
-    &rosTaskHandle,
-    tskNO_AFFINITY);
+  // If not in calibration mode...
+  #else
+    // Initialize the mutex
+    imu_message_mutex = xSemaphoreCreateMutex();
+    if (imu_message_mutex == NULL) {
+      ESP_LOGE(TAG, "Failed to create mutex!");
+      return;
+    }
+
+    // Set up the wifi connection
+    #if defined(CONFIG_MICRO_ROS_ESP_NETIF_WLAN) || defined(CONFIG_MICRO_ROS_ESP_NETIF_ENET)
+      ESP_ERROR_CHECK(uros_network_interface_initialize());
+    #endif
+    
+    // AHRS Task
+    xTaskCreatePinnedToCore(
+      ahrs_task,
+      "ahrs_task",
+      CONFIG_AHRS_APP_STACK,
+      NULL,
+      CONFIG_MAX_APP_TASK_PRIO-1,
+      &ahrsTaskHandle,
+      tskNO_AFFINITY);
+
+    // Micro ROS Task
+    xTaskCreatePinnedToCore(
+      micro_ros_task,
+      "micro_ros_task",
+      CONFIG_MICRO_ROS_APP_STACK,
+      NULL,
+      CONFIG_MICRO_ROS_APP_TASK_PRIO,
+      &rosTaskHandle,
+      tskNO_AFFINITY);
+  #endif
 }
