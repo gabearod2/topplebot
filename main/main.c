@@ -17,6 +17,7 @@
 *  Modifications made by Gabriel Rodriguez (2024-2025)                      *
 *****************************************************************************/
 
+// Base Imports
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -43,15 +44,26 @@
 #include <rclc/rclc.h>
 #include <rclc/executor.h>
 
-static const char *TAG = "main";
+// For motor control
+#include "driver/ledc.h"
+#include "driver/gpio.h"
+#define START_PIN   17
+#define DIR_PIN     4
+#define PWM_PIN     25
+#define PWM_CHANNEL LEDC_CHANNEL_1
+#define PWM_TIMER   LEDC_TIMER_0
+#define PWM_MODE    LEDC_HIGH_SPEED_MODE
+#define PWM_FREQ    20000  // 20 kHz
+#define PWM_RES     LEDC_TIMER_8_BIT  // 8-bit resolution
 
+// Setting additional parameters
+static const char *TAG = "main";
 #ifdef CONFIG_MICRO_ROS_ESP_XRCE_DDS_MIDDLEWARE
 #include <rmw_microros/rmw_microros.h>
 #endif
 
 #define CONFIG_MICRO_ROS_APP_STACK 4096
 #define CONFIG_MICRO_ROS_APP_TASK_PRIO 5
-
 #define CONFIG_AHRS_APP_STACK 4096
 #define CONFIG_CALIBRATION_APP_STACK 4096
 #define CONFIG_MAX_APP_TASK_PRIO 30
@@ -128,6 +140,52 @@ vector_t va, vg, vm;
 // Mutex to protect the shared data
 static SemaphoreHandle_t imu_message_mutex;
 
+// Function to initialize motor control pins and PWM
+void motor_init() {
+  // Configure START pin
+  gpio_pad_select_gpio(START_PIN);
+  gpio_set_direction(START_PIN, GPIO_MODE_OUTPUT);
+  gpio_set_level(START_PIN, 1); // Start HIGH
+
+  // Configure DIR pin
+  gpio_pad_select_gpio(DIR_PIN);
+  gpio_set_direction(DIR_PIN, GPIO_MODE_OUTPUT);
+  gpio_set_level(DIR_PIN, 0); // Default forward
+
+  // Configure LEDC PWM
+  ledc_timer_config_t timer_conf = {
+      .duty_resolution = PWM_RES,
+      .freq_hz = PWM_FREQ,
+      .speed_mode = PWM_MODE,
+      .timer_num = PWM_TIMER
+  };
+  ledc_timer_config(&timer_conf);
+
+  ledc_channel_config_t ledc_conf = {
+      .channel    = PWM_CHANNEL,
+      .duty       = 0, // Start with motor off
+      .gpio_num   = PWM_PIN,
+      .speed_mode = PWM_MODE,
+      .hpoint     = 0,
+      .timer_sel  = PWM_TIMER
+  };
+  ledc_channel_config(&ledc_conf);
+}
+
+// Function to set motor speed
+void motor_control(int speed) {
+  if (speed > 0) {
+      gpio_set_level(DIR_PIN, 0); // Forward
+  } else if (speed < 0) {
+      gpio_set_level(DIR_PIN, 1); // Reverse
+  }
+
+  // Convert speed to 8-bit PWM value (0-255)
+  uint32_t duty = 255 - abs(speed);
+  ledc_set_duty(PWM_MODE, PWM_CHANNEL, duty);
+  ledc_update_duty(PWM_MODE, PWM_CHANNEL);
+}
+
 // Task to run the AHRS algorithm as fast as possible.
 static void ahrs_task(void *arg)
 {
@@ -165,10 +223,22 @@ static void ahrs_task(void *arg)
       q_z = z;
       xSemaphoreGive(imu_message_mutex);
     }
+
+    // Example motor control logic based on pitch (y-axis rotation)
+    if (q_y > 0.1) 
+    {
+      motor_control(100);  // Move forward
+    } else if (q_y < -0.1) {
+      motor_control(-100); // Move backward
+    } else {
+      motor_control(0);    // Stop
+    }
+    
     taskYIELD();
  }
 }
 
+// Function to publish IMU messages
 void imu_callback(void)
 {
     if (xSemaphoreTake(imu_message_mutex, portMAX_DELAY))
@@ -259,14 +329,11 @@ static void micro_ros_task(void *arg)
   vTaskDelete(NULL); 
 }
 
+// Task to calbiration the MPU9250
 static void calibration_task(void *arg)
 {
   ESP_LOGI(TAG, "Calibration mode is enabled. Running calibration...");
 
-  // Initialize MPU with calibration (cal defined above) and algorithm frequency
-  i2c_mpu9250_init(&cal);
-  ahrs_init(SAMPLE_FREQ_Hz, 0.8);
-  memset(&msg, 0, sizeof(msg)); 
   vector_t vg_sum_sum = {0}, offset_holder_sum = {0}, scale_lo_holder_sum = {0}, scale_hi_holder_sum = {0};
   vector_t v_min_holder_sum = {0}, v_max_holder_sum = {0}, v_scale_holder_sum = {0};
 
