@@ -442,6 +442,7 @@ void app_main(void)
       return;
     }
 
+    // Initialize the motor
     motor_init();
 
     // Set up the wifi connection
