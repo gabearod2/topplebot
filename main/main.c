@@ -145,7 +145,7 @@ void motor_init() {
   // Configure START pin
   esp_rom_gpio_pad_select_gpio(START_PIN);
   gpio_set_direction(START_PIN, GPIO_MODE_OUTPUT);
-  gpio_set_level(START_PIN, 1); // Start HIGH
+  gpio_set_level(START_PIN, 0); // Start with motor off
 
   // Configure DIR pin
   esp_rom_gpio_pad_select_gpio(DIR_PIN);
