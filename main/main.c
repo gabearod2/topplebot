@@ -29,12 +29,13 @@
 #include "esp_err.h"
 #include "esp_task_wdt.h"
 
-// For the MPU
+// For the Components
 #include "driver/i2c.h"
 #include "ahrs.h"
 #include "mpu9250.h"
 #include "calibrate.h"
 #include "common.h"
+#include "motor_control.h"
 
 // For micro-ROS
 #include <uros_network_interfaces.h>
@@ -43,18 +44,6 @@
 #include <sensor_msgs/msg/imu.h>
 #include <rclc/rclc.h>
 #include <rclc/executor.h>
-
-// For motor control
-#include "driver/ledc.h"
-#include "driver/gpio.h"
-#define START_PIN   17
-#define DIR_PIN     4
-#define PWM_PIN     25
-#define PWM_CHANNEL LEDC_CHANNEL_1
-#define PWM_TIMER   LEDC_TIMER_0
-#define PWM_MODE    LEDC_HIGH_SPEED_MODE
-#define PWM_FREQ    20000  // 20 kHz
-#define PWM_RES     LEDC_TIMER_8_BIT  // 8-bit resolution
 
 // Setting additional parameters
 static const char *TAG = "main";
@@ -76,12 +65,12 @@ static const char *TAG = "main";
 rcl_publisher_t publisher;
 sensor_msgs__msg__Imu msg;
 
-// Define task handles
+// Defining the Task Handles
 TaskHandle_t ahrsTaskHandle = NULL;
 TaskHandle_t rosTaskHandle = NULL;
 TaskHandle_t calibrationTaskHandle = NULL;
 
-// Calibration constants
+// Calibration Constants for IMU
 calibration_t cal = {
 
 // magnetometer offset from calibration
@@ -133,58 +122,12 @@ static void transform_mag(vector_t *v)
  v->z = -x;
 }
 
-// Shared variables
+// Initializing Shared Variables
 static double q_w, q_x, q_y, q_z;
 vector_t va, vg, vm;
 
-// Mutex to protect the shared data
+// Initializing Mutex to Protect the Shared Data
 static SemaphoreHandle_t imu_message_mutex;
-
-// Function to initialize motor control pins and PWM
-void motor_init() {
-  // Configure START pin
-  esp_rom_gpio_pad_select_gpio(START_PIN);
-  gpio_set_direction(START_PIN, GPIO_MODE_OUTPUT);
-  gpio_set_level(START_PIN, 0); // Start with motor off
-
-  // Configure DIR pin
-  esp_rom_gpio_pad_select_gpio(DIR_PIN);
-  gpio_set_direction(DIR_PIN, GPIO_MODE_OUTPUT);
-  gpio_set_level(DIR_PIN, 0); // Default forward
-
-  // Configure LEDC PWM
-  ledc_timer_config_t timer_conf = {
-      .duty_resolution = PWM_RES,
-      .freq_hz = PWM_FREQ,
-      .speed_mode = PWM_MODE,
-      .timer_num = PWM_TIMER
-  };
-  ledc_timer_config(&timer_conf);
-
-  ledc_channel_config_t ledc_conf = {
-      .channel    = PWM_CHANNEL,
-      .duty       = 0, // Start with motor off
-      .gpio_num   = PWM_PIN,
-      .speed_mode = PWM_MODE,
-      .hpoint     = 0,
-      .timer_sel  = PWM_TIMER
-  };
-  ledc_channel_config(&ledc_conf);
-}
-
-// Function to set motor speed
-void motor_control(int speed) {
-  if (speed > 0) {
-      gpio_set_level(DIR_PIN, 0); // Forward
-  } else if (speed < 0) {
-      gpio_set_level(DIR_PIN, 1); // Reverse
-  }
-
-  // Convert speed to 8-bit PWM value (0-255)
-  uint32_t duty = 255 - abs(speed);
-  ledc_set_duty(PWM_MODE, PWM_CHANNEL, duty);
-  ledc_update_duty(PWM_MODE, PWM_CHANNEL);
-}
 
 // Task to run the AHRS algorithm as fast as possible.
 static void ahrs_task(void *arg)
@@ -224,14 +167,36 @@ static void ahrs_task(void *arg)
       xSemaphoreGive(imu_message_mutex);
     }
 
-    // Example motor control logic based on pitch (y-axis rotation)
+    // Example motor control logic for motor 1 (x-axis rotation)
+    if (q_x > 0.1) 
+    {
+      motor_control_1(100, true);  // Move forward
+    } else if (q_x < -0.1) {
+      motor_control_1(-100, true); // Move backward
+    } else {
+      motor_control_1(0, true);    // Stop
+    }
+
+
+    // Example motor control logic for motor 2 (y-axis rotation)
     if (q_y > 0.1) 
     {
-      motor_control(100);  // Move forward
+      motor_control_2(100, true);  // Move forward
     } else if (q_y < -0.1) {
-      motor_control(-100); // Move backward
+      motor_control_2(-100, true); // Move backward
     } else {
-      motor_control(0);    // Stop
+      motor_control_2(0, true);    // Stop
+    }
+
+
+    // Example motor control logic for motor 3 (z-axis rotation)
+    if (q_z > 0.1) 
+    {
+      motor_control_3(100, true);  // Move forward
+    } else if (q_z < -0.1) {
+      motor_control_3(-100, true); // Move backward
+    } else {
+      motor_control_3(0, true);    // Stop
     }
     
     taskYIELD();
