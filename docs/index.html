@@ -6,10 +6,10 @@
     <title>ToppleBot</title>
     <style>
         body {
-            font-family: Arial, sans-serif;
+            font-family: monospace, sans-serif;
             margin: 40px;
             padding: 20px;
-            background-color: #f4f4f4;
+            background-color: #eae0b0;
         }
         h1, h2, h3 {
             color: #333;
@@ -30,13 +30,15 @@
     </style>
 </head>
 <body>
-    <h1>ToppleBot</h1>
-    <p>Software for ToppleBot microcontroller (ESP32), a scalable robot for autonomous balancing applications.</p>
+    <h1>The ToppleBot Project</h1>
+
+    <p><em>A Scalable Robot for Autonomous Balancing Applications</em></p>
 
     <h2>Attributions</h2>
     
     <h3>Used Repositories</h3>
-    <p>Forked from <a href="https://github.com/miniben-90/mpu9250" target="_blank">this repository</a> for IMU integration. Additionally configured to include <a href="https://github.com/micro-ROS/micro_ros_espidf_component.git" target="_blank">micro-ROS for ESP</a>.</p>
+
+    <p>The topplebot's <a href="https://github.com/gabearod2/topplebot" target="_blank">onboard software</a> was forked from <a href="https://github.com/psiphi75/esp-mpu9250" target="_blank">this repository</a>, authored by Simon M. Werner. He integrateed the <a href="https://x-io.co.uk/open-source-imu-and-ahrs-algorithms/" target="_blank">Madgwick AHRS algorithm</a> on the ESP32 with the MPU9250 IMU. The software has been additionally configured to include <a href="https://github.com/micro-ROS/micro_ros_espidf_component.git" target="_blank">micro-ROS for ESP32</a>. This inclusion allows for the visualization and odometry capabilites to be run by the <a href="https://github.com/gabearod2/topplebot_station" target="_blank">control station software</a>, which utilizes the capabilities from <a href="https://docs.ros.org/en/humble/index.html" target="_blank">ROS2 Humble</a>, specifically using the tf2 system for visualization in RViz.</p>
     
     <h3>Calibration Resource</h3>
     <p>See more information about calibration <a href="https://github.com/miniben-90/mpu9250" target="_blank">here</a>.</p>
