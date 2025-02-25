@@ -51,12 +51,14 @@ static const char *TAG = "main";
 #include <rmw_microros/rmw_microros.h>
 #endif
 
+// Task Config
 #define CONFIG_MICRO_ROS_APP_STACK 4096
 #define CONFIG_MICRO_ROS_APP_TASK_PRIO 5
 #define CONFIG_AHRS_APP_STACK 4096
 #define CONFIG_CALIBRATION_APP_STACK 4096
 #define CONFIG_MAX_APP_TASK_PRIO 30
 
+// More Micro-ROS and I2C
 #define RCCHECK(fn) { rcl_ret_t temp_rc = fn; if((temp_rc != RCL_RET_OK)){printf("Failed status on line %d: %d. Aborting.\n",__LINE__,(int)temp_rc);vTaskDelete(NULL);}}
 #define RCSOFTCHECK(fn) { rcl_ret_t temp_rc = fn; if((temp_rc != RCL_RET_OK)){printf("Failed status on line %d: %d. Continuing.\n",__LINE__,(int)temp_rc);}}
 #define I2C_MASTER_NUM I2C_NUM_0 /*!< I2C port number for master dev */
@@ -132,13 +134,14 @@ static SemaphoreHandle_t imu_message_mutex;
 // Task to run the AHRS algorithm as fast as possible.
 static void ahrs_task(void *arg)
 {
- // Initialize MPU with calibration (cal defined above) and algorithm frequency
- i2c_mpu9250_init(&cal);
- ahrs_init(SAMPLE_FREQ_Hz, 0.8);
- memset(&msg, 0, sizeof(msg)); 
+  // Initialize MPU with calibration (cal defined above) and algorithm frequency
+  i2c_mpu9250_init(&cal);
+  ahrs_init(SAMPLE_FREQ_Hz, 0.8);
+  memset(&msg, 0, sizeof(msg)); 
 
- while (true)
- {
+  // Loop to update AHRS and assign imu info to mutex
+  while (true)
+  {
     // Get the Accelerometer, Gyroscope and Magnetometer values.
     ESP_ERROR_CHECK(get_accel_gyro_mag(&va, &vg, &vm));
 
@@ -177,7 +180,6 @@ static void ahrs_task(void *arg)
       motor_control_1(0, true);    // Stop
     }
 
-
     // Example motor control logic for motor 2 (y-axis rotation)
     if (q_y > 0.1) 
     {
@@ -188,7 +190,6 @@ static void ahrs_task(void *arg)
       motor_control_2(0, true);    // Stop
     }
 
-
     // Example motor control logic for motor 3 (z-axis rotation)
     if (q_z > 0.1) 
     {
@@ -198,47 +199,61 @@ static void ahrs_task(void *arg)
     } else {
       motor_control_3(0, true);    // Stop
     }
+
+    // Initializing desired quaternion and error quaternion
+    float q_x_des, q_y_des, q_z_des;
+    float q_x_err, q_y_err, q_z_err;
+    float kp, ki, kd;
+
+    
+    q_x_des, q_y_des, q_z_des = 0.5, 0.5, 0.5;
+    q_x_err, q_y_err, q_z_err = q_x - q_x_des, q_y - q_y_des, q_x - q_y_des;
+    float dw_dt_x = q_x_err * kp;
+    
+    // The dt will be changing because of the two task priority structure...
+    // TODO: Implement controller after the motor control is finalized.
     
     taskYIELD();
- }
+  }
 }
 
 // Function to publish IMU messages
 void imu_callback(void)
 {
-    if (xSemaphoreTake(imu_message_mutex, portMAX_DELAY))
-    {
-        // Assign Quaternion to message
-        msg.orientation.w = q_w;
-        msg.orientation.x = q_x;
-        msg.orientation.y = q_y;
-        msg.orientation.z = q_z;
+  // Pulling the imu information from the mutex
+  if (xSemaphoreTake(imu_message_mutex, portMAX_DELAY))
+  {
+    // Assign Quaternion to message
+    msg.orientation.w = q_w;
+    msg.orientation.x = q_x;
+    msg.orientation.y = q_y;
+    msg.orientation.z = q_z;
 
-        // Assign Angular Velocities to message
-        msg.angular_velocity.x = DEG2RAD(vg.x);
-        msg.angular_velocity.y = DEG2RAD(vg.y);
-        msg.angular_velocity.z = DEG2RAD(vg.z);
+    // Assign Angular Velocities to message
+    msg.angular_velocity.x = DEG2RAD(vg.x);
+    msg.angular_velocity.y = DEG2RAD(vg.y);
+    msg.angular_velocity.z = DEG2RAD(vg.z);
 
-        // Assign Linear Accelerations to message
-        msg.linear_acceleration.x = va.x;
-        msg.linear_acceleration.y = va.y;
-        msg.linear_acceleration.z = va.z;
+    // Assign Linear Accelerations to message
+    msg.linear_acceleration.x = va.x;
+    msg.linear_acceleration.y = va.y;
+    msg.linear_acceleration.z = va.z;
 
-        xSemaphoreGive(imu_message_mutex);
-    }
+    xSemaphoreGive(imu_message_mutex);
+  }
 
-    // Assign covariances as unknowns (they are not needed)
-    memset(msg.orientation_covariance, 0, sizeof(msg.orientation_covariance));
-    memset(msg.angular_velocity_covariance, 0, sizeof(msg.angular_velocity_covariance));
-    memset(msg.linear_acceleration_covariance, 0, sizeof(msg.linear_acceleration_covariance));
+  // Assign covariances as unknowns (they are not needed)
+  memset(msg.orientation_covariance, 0, sizeof(msg.orientation_covariance));
+  memset(msg.angular_velocity_covariance, 0, sizeof(msg.angular_velocity_covariance));
+  memset(msg.linear_acceleration_covariance, 0, sizeof(msg.linear_acceleration_covariance));
 
-    // Publish the message and check for errors
-    rcl_ret_t ret = rcl_publish(&publisher, &msg, NULL);
-    if (ret == RCL_RET_OK) {
-        ESP_LOGI(TAG, "IMU Message published successfully");
-    } else {
-        ESP_LOGI(TAG, "Failed to publish IMU Message");
-    }
+  // Publish the message and check for errors
+  rcl_ret_t ret = rcl_publish(&publisher, &msg, NULL);
+  if (ret == RCL_RET_OK) {
+    ESP_LOGI(TAG, "IMU Message published successfully");
+  } else {
+    ESP_LOGI(TAG, "Failed to publish IMU Message");
+  }
 }
 
 // Task Function for Micro-ROS and Calibration
@@ -255,37 +270,36 @@ static void micro_ros_task(void *arg)
   rcl_init_options_t init_options = rcl_get_zero_initialized_init_options();
   RCCHECK(rcl_init_options_init(&init_options, allocator));
 
-    #ifdef CONFIG_MICRO_ROS_ESP_XRCE_DDS_MIDDLEWARE
-      rmw_init_options_t* rmw_options = rcl_init_options_get_rmw_init_options(&init_options);
-      // Static Agent IP and port can be used instead of autodisvery.
-      RCCHECK(rmw_uros_options_set_udp_address(CONFIG_MICRO_ROS_AGENT_IP, CONFIG_MICRO_ROS_AGENT_PORT, rmw_options));
-      //RCCHECK(rmw_uros_discover_agent(rmw_options));
-    #endif
+  #ifdef CONFIG_MICRO_ROS_ESP_XRCE_DDS_MIDDLEWARE
+    rmw_init_options_t* rmw_options = rcl_init_options_get_rmw_init_options(&init_options);
+    // Static Agent IP and port can be used instead of autodisvery.
+    RCCHECK(rmw_uros_options_set_udp_address(CONFIG_MICRO_ROS_AGENT_IP, CONFIG_MICRO_ROS_AGENT_PORT, rmw_options));
+    //RCCHECK(rmw_uros_discover_agent(rmw_options));
+  #endif
   
-    // create init_options
-    RCCHECK(rclc_support_init_with_options(&support, 0, NULL, &init_options, &allocator));
+  // create init_options
+  RCCHECK(rclc_support_init_with_options(&support, 0, NULL, &init_options, &allocator));
 
-    // create node
-    rcl_node_t node;
-    RCCHECK(rclc_node_init_default(&node, "esp32_imu_publisher", "", &support));
+  // create node
+  rcl_node_t node;
+  RCCHECK(rclc_node_init_default(&node, "esp32_imu_publisher", "", &support));
 
-    // create publisher
-    RCCHECK(rclc_publisher_init_default(
-      &publisher,
-      &node,
-      ROSIDL_GET_MSG_TYPE_SUPPORT(sensor_msgs, msg, Imu),
-      "imu_data"));
+  // create publisher
+  RCCHECK(rclc_publisher_init_default(
+    &publisher,
+    &node,
+    ROSIDL_GET_MSG_TYPE_SUPPORT(sensor_msgs, msg, Imu),
+    "imu_data"));
+  ESP_LOGI(TAG, "micro_ros_task initialized. Entering loop...");
 
-    ESP_LOGI(TAG, "micro_ros_task initialized. Entering loop...");
-
-    while(1){
-
-      ESP_LOGI(TAG, "Calling imu_callback()");
-      imu_callback();
-
-      ESP_LOGI(TAG, "imu_callback() finished. Waiting for next cycle...");
-      vTaskDelayUntil(&xLastWakeTime, xFrequency);  // Wait 20ms for next cycle
-    }
+  // Looping to update the quaternion and publish
+  while(1)
+  {
+    ESP_LOGI(TAG, "Calling imu_callback()");
+    imu_callback();
+    ESP_LOGI(TAG, "imu_callback() finished. Waiting for next cycle...");
+    vTaskDelayUntil(&xLastWakeTime, xFrequency);  // Wait 20ms for next cycle
+  }
 
   // Exit and clean up
   RCCHECK(rcl_publisher_fini(&publisher, &node));

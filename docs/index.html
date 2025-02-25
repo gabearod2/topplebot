@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ToppleBot</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 40px;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+        h1, h2, h3 {
+            color: #333;
+        }
+        pre {
+            background: #eee;
+            padding: 10px;
+            border-radius: 5px;
+            overflow-x: auto;
+        }
+        a {
+            color: #0077cc;
+            text-decoration: none;
+        }
+        a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <h1>ToppleBot</h1>
+    <p>Software for ToppleBot microcontroller (ESP32), a scalable robot for autonomous balancing applications.</p>
+
+    <h2>Attributions</h2>
+    
+    <h3>Used Repositories</h3>
+    <p>Forked from <a href="https://github.com/miniben-90/mpu9250" target="_blank">this repository</a> for IMU integration. Additionally configured to include <a href="https://github.com/micro-ROS/micro_ros_espidf_component.git" target="_blank">micro-ROS for ESP</a>.</p>
+    
+    <h3>Calibration Resource</h3>
+    <p>See more information about calibration <a href="https://github.com/miniben-90/mpu9250" target="_blank">here</a>.</p>
+    
+    <h2>Start-Up</h2>
+    <p>Clone this repository:</p>
+    <pre>git clone --recurse-submodules https://github.com/gabearod2/topplebot.git &amp;&amp; cd topplebot</pre>
+    
+    <p>Run the following command to follow your USB connections before connecting the ESP32:</p>
+    <pre>sudo dmesg --follow</pre>
+    
+    <p>Connect the ESP32 and record the name of the port. Assign privileges to the port with the ESP32 connected to it, using <code>/dev/ttyUSB0</code> as an example:</p>
+    <pre>sudo chmod 666 /dev/ttyUSB0</pre>
+    
+    <h3>Calibration</h3>
+    <p>First, configure the ToppleBot for calibration in the menu:</p>
+    <ul>
+        <li>Select "Component Config"</li>
+        <li>Go to "MPU9250 Calibration"</li>
+        <li>Enable "Calibrate for first run"</li>
+    </ul>
+    <p>Build and flash the project to the ESP32:</p>
+    <pre>docker run -it --rm \
+    --user espidf \
+    --volume="/etc/timezone:/etc/timezone:ro" \
+    -v "$(pwd)":/topplebot \
+    -v /dev:/dev \
+    --privileged \
+    --workdir /topplebot \
+    microros/esp-idf-microros:latest \
+    /bin/bash -c "idf.py menuconfig build flash monitor"</pre>
+    <p>(To exit the serial monitor, type <code>Ctrl-]</code>.)</p>
+    
+    <h3>Configure Micro-ROS</h3>
+    <p>If you do not know the IP address of your control station, use:</p>
+    <pre>ifconfig</pre>
+    <p>Then, configure the ESP32:</p>
+    <ul>
+        <li>Set the corresponding calibration offsets in <code>main.c</code>.</li>
+        <li>Modify GPIO pins if needed.</li>
+    </ul>
+    <p>Next, disable calibration and configure Micro-ROS:</p>
+    <ul>
+        <li>Go to "Component Config" &rarr; "MPU9250 Calibration" &rarr; Turn off calibration.</li>
+        <li>Select "micro-ROS settings"</li>
+        <li>Enter your IP address, Wi-Fi SSID, and Wi-Fi password.</li>
+    </ul>
+    <p>Finally, build and flash the project again:</p>
+    <pre>docker run -it --rm \
+    --user espidf \
+    --volume="/etc/timezone:/etc/timezone:ro" \
+    -v "$(pwd)":/topplebot \
+    -v /dev:/dev \
+    --privileged \
+    --workdir /topplebot \
+    microros/esp-idf-microros:latest \
+    /bin/bash -c "idf.py menuconfig build flash monitor"</pre>
+    
+    <h3>Final Steps</h3>
+    <p>If everything goes well, you will see the connection established and messages being sent.</p>
+    <p>You can now disconnect the ESP32 and connect it to an external power source—Micro-ROS has been configured successfully!</p>
+</body>
+</html>
