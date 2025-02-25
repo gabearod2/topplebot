@@ -93,30 +93,64 @@ void motor_init() {
 
 // Function to Set Motor 1 Speed
 void motor_control_1(int speed, bool type) {
-    gpio_set_level(START_PIN_1, speed != 0); // Start or Stop Motor
-    gpio_set_level(DIR_PIN_1, (speed < 0)); // Forward or Reverse
 
-    uint32_t duty = abs(speed); // 0 to 255
+    // Setting the start pin
+    if (speed != 0) {
+        gpio_set_level(START_PIN_1, 1); // Motor On
+    } else {
+        gpio_set_level(START_PIN_1, 0); // Motor Off
+    }
+
+    // Setting the direction pin
+    if (speed > 0) {
+        gpio_set_level(DIR_PIN_1, 0); // Forward
+    } else if (speed < 0) {
+        gpio_set_level(DIR_PIN_1, 1); // Reverse
+    }
+
+    uint32_t duty = 255 - abs(speed); // 0 to 255
     ledc_set_duty(PWM_MODE, PWM_CHANNEL_1, duty);
     ledc_update_duty(PWM_MODE, PWM_CHANNEL_1);
 }
 
 // Function to Set Motor 2 Speed
 void motor_control_2(int speed, bool type) {
-    gpio_set_level(START_PIN_2, speed != 0);
-    gpio_set_level(DIR_PIN_2, (speed < 0));
+    // Setting the start pin
+    if (speed != 0) {
+        gpio_set_level(START_PIN_2, 1); // Motor On
+    } else {
+        gpio_set_level(START_PIN_2, 0); // Motor Off
+    }
 
-    uint32_t duty = abs(speed);
+    // Setting the direction pin
+    if (speed > 0) {
+        gpio_set_level(DIR_PIN_2, 0); // Forward
+    } else if (speed < 0) {
+        gpio_set_level(DIR_PIN_2, 1); // Reverse
+    }
+
+    uint32_t duty = 255 - abs(speed);
     ledc_set_duty(PWM_MODE, PWM_CHANNEL_2, duty);
     ledc_update_duty(PWM_MODE, PWM_CHANNEL_2);
 }
 
 // Function to Set Motor 3 Speed
 void motor_control_3(int speed, bool type) {
-    gpio_set_level(START_PIN_3, speed != 0);
-    gpio_set_level(DIR_PIN_3, (speed < 0));
+    // Setting the start pin
+    if (speed != 0) {
+        gpio_set_level(START_PIN_3, 1); // Motor On
+    } else {
+        gpio_set_level(START_PIN_3, 0); // Motor Off
+    }
 
-    uint32_t duty = abs(speed);
+    // Setting the direction pin
+    if (speed > 0) {
+        gpio_set_level(DIR_PIN_3, 0); // Forward
+    } else if (speed < 0) {
+        gpio_set_level(DIR_PIN_3, 1); // Reverse
+    }
+
+    uint32_t duty = 255 - abs(speed);
     ledc_set_duty(PWM_MODE, PWM_CHANNEL_3, duty);
     ledc_update_duty(PWM_MODE, PWM_CHANNEL_3);
 }
