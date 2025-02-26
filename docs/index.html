@@ -11,12 +11,12 @@
             padding: 20px;
             background-color: #d0e2f2;
         }
-        h1, h4 {
+        h1, h3 {
             color: #333;
             text-align: center;
         } 
         
-        h2, h3 {
+        h2, h4 {
             color: #333;
         }
         pre {
@@ -37,19 +37,16 @@
 <body>
     <h1>The ToppleBot Project</h1>
 
-    <h4><em>A Scalable Robot for Autonomous Balancing Applications</em></h4>
+    <h3><em>A Scalable Robot for Autonomous Balancing Applications</em></h3>
 
     <h2>About</h2>
     
-    <p>The ToppleBot was designed within the Physical Sciences Department of the Embry-Riddle Aeronautical University. It was the senior design project of Kilian Olen (Principal Investigator), Gabriel Rodriguez (Software and Communications), Erin Bader (Design), and William Baker (Electrical). It is built of the successes of CUBEBAS, a previous senior desing that built off of Rem-RC's design. The ToppleBot expands the project envelope from just balancing to also including scaling designs, visualization, odometry, and toppling capabilities.</p>
+    <p>The ToppleBot was designed within the Physical Sciences Department of the Embry-Riddle Aeronautical University. It was the senior design project of Kilian Olen (Principal Investigator), Gabriel Rodriguez (Software and Communications), Erin Bader (Design), and William Baker (Electrical). It is built of the successes of CUBEBAS, a previous senior design project that built off of Rem-RC's Balancing Cube design. The ToppleBot expands the project envelope from just balancing to also including scaling designs, visualization, odometry, and toppling capabilities.</p>
 
     <p>The Topplebot's <a href="https://github.com/gabearod2/topplebot" target="_blank">onboard software</a> was forked from <a href="https://github.com/psiphi75/esp-mpu9250" target="_blank">this repository</a>, authored by Simon M. Werner. He integrateed the <a href="https://x-io.co.uk/open-source-imu-and-ahrs-algorithms/" target="_blank">Madgwick AHRS algorithm</a> on the ESP32 with the MPU9250 IMU. The software has been additionally configured to include <a href="https://github.com/micro-ROS/micro_ros_espidf_component.git" target="_blank">micro-ROS for ESP32</a>. This inclusion allows for the visualization and odometry capabilites to be run by the <a href="https://github.com/gabearod2/topplebot_station" target="_blank">control station software</a>, which utilizes the capabilities from <a href="https://docs.ros.org/en/humble/index.html" target="_blank">ROS2 Humble</a>, specifically using the tf2 system for visualization in RViz.</p>
     
-    <h3>Calibration Resource</h3>
+    <h2>Onboard Software Start-Up</h2>
 
-    <p>See more information about calibration <a href="https://github.com/miniben-90/mpu9250" target="_blank">here</a>.</p>
-    
-    <h2>Start-Up</h2>
     <p>Clone this repository:</p>
     <pre>git clone --recurse-submodules https://github.com/gabearod2/topplebot.git &amp;&amp; cd topplebot</pre>
     
@@ -59,7 +56,6 @@
     <p>Connect the ESP32 and record the name of the port. Assign privileges to the port with the ESP32 connected to it, using <code>/dev/ttyUSB0</code> as an example:</p>
     <pre>sudo chmod 666 /dev/ttyUSB0</pre>
     
-    <h3>Calibration</h3>
     <p>First, configure the ToppleBot for calibration in the menu:</p>
     <ul>
         <li>Select "Component Config"</li>
@@ -78,9 +74,9 @@
     /bin/bash -c "idf.py menuconfig build flash monitor"</pre>
     <p>(To exit the serial monitor, type <code>Ctrl-]</code>.)</p>
     
-    <h3>Configure Micro-ROS</h3>
-    <p>If you do not know the IP address of your control station, use:</p>
+    <p>If you do not know the IP address of your control station, use this command on your control station:</p>
     <pre>ifconfig</pre>
+
     <p>Then, configure the ESP32:</p>
     <ul>
         <li>Set the corresponding calibration offsets in <code>main.c</code>.</li>
@@ -103,8 +99,11 @@
     microros/esp-idf-microros:latest \
     /bin/bash -c "idf.py menuconfig build flash monitor"</pre>
     
-    <h3>Final Steps</h3>
     <p>If everything goes well, you will see the connection established and messages being sent.</p>
-    <p>You can now disconnect the ESP32 and connect it to an external power source—Micro-ROS has been configured successfully!</p>
+    <p>You can now disconnect the ESP32 and connect it to an external power source. Micro-ROS has been configured successfully! See more information about calibration <a href="https://github.com/miniben-90/mpu9250" target="_blank">here</a>.</p>
+
+    <h2>Control Station Software Start-Up</h2>
+
+    
 </body>
 </html>
