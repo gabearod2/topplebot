@@ -170,35 +170,41 @@ static void ahrs_task(void *arg)
       xSemaphoreGive(imu_message_mutex);
     }
 
+    float q_des_x = 0.0;
+
     // Example motor control logic for motor 1 (x-axis rotation)
-    if (q_x > 0.1) 
+    //if (q_x > 0.0) 
+    //{
+    int speed = (int) 255*q_x;
+    if (abs(speed) < 255 && abs(speed) > 5) 
     {
-      motor_control_1(100, true);  // Move forward
-    } else if (q_x < -0.1) {
-      motor_control_1(-100, true); // Move backward
-    } else {
-      motor_control_1(0, true);    // Stop
-    }
-
-    // Example motor control logic for motor 2 (y-axis rotation)
-    if (q_y > 0.1) 
+      motor_control_3(speed, true);  // Move with quaternion
+    } else 
     {
-      motor_control_2(100, true);  // Move forward
-    } else if (q_y < -0.1) {
-      motor_control_2(-100, true); // Move backward
-    } else {
-      motor_control_2(0, true);    // Stop
-    }
-
-    // Example motor control logic for motor 3 (z-axis rotation)
-    if (q_z > 0.1) 
-    {
-      motor_control_3(100, true);  // Move forward
-    } else if (q_z < -0.1) {
-      motor_control_3(-100, true); // Move backward
-    } else {
       motor_control_3(0, true);    // Stop
     }
+    ESP_LOGI(TAG, "Current q_x %.3f", q_x);//Commanded Speed 
+    ESP_LOGI(TAG, "Commanded Speed %d", speed);
+
+    // Example motor control logic for motor 2 (y-axis rotation)
+    //if (q_y > 0.1) 
+    //{
+    //  motor_control_2(100, true);  // Move forward
+    //} else if (q_y < -0.1) {
+    //  motor_control_2(-100, true); // Move backward
+    //} else {
+    // motor_control_2(0, true);    // Stop
+    //}
+
+    // Example motor control logic for motor 3 (z-axis rotation)
+    //if (q_z > 0.1) 
+    //{
+    //  motor_control_3(100, true);  // Move forward
+    //} else if (q_z < -0.1) {
+    //  motor_control_3(-100, true); // Move backward
+    //} else {
+    //  motor_control_3(0, true);    // Stop
+    //}
 
     // Initializing desired quaternion and error quaternion
     float q_x_des, q_y_des, q_z_des;
@@ -206,9 +212,9 @@ static void ahrs_task(void *arg)
     float kp, ki, kd;
 
     
-    q_x_des, q_y_des, q_z_des = 0.5, 0.5, 0.5;
-    q_x_err, q_y_err, q_z_err = q_x - q_x_des, q_y - q_y_des, q_x - q_y_des;
-    float dw_dt_x = q_x_err * kp;
+    //q_x_des, q_y_des, q_z_des = 0.5, 0.5, 0.5;
+    //q_x_err, q_y_err, q_z_err = q_x - q_x_des, q_y - q_y_des, q_x - q_y_des;
+    //float dw_dt_x = q_x_err * kp;
     
     // The dt will be changing because of the two task priority structure...
     // TODO: Implement controller after the motor control is finalized.

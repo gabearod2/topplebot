@@ -108,7 +108,7 @@ void motor_control_1(int speed, bool type) {
         gpio_set_level(DIR_PIN_1, 1); // Reverse
     }
 
-    uint32_t duty = 255 - abs(speed); // 0 to 255
+    uint32_t duty = abs(speed); // 0 to 255
     ledc_set_duty(PWM_MODE, PWM_CHANNEL_1, duty);
     ledc_update_duty(PWM_MODE, PWM_CHANNEL_1);
 }
@@ -119,7 +119,7 @@ void motor_control_2(int speed, bool type) {
     if (speed != 0) {
         gpio_set_level(START_PIN_2, 1); // Motor On
     } else {
-        gpio_set_level(START_PIN_2, 0); // Motor Off
+        gpio_set_level(START_PIN_2, 0); // BRAKE
     }
 
     // Setting the direction pin
@@ -129,7 +129,7 @@ void motor_control_2(int speed, bool type) {
         gpio_set_level(DIR_PIN_2, 1); // Reverse
     }
 
-    uint32_t duty = 255 - abs(speed);
+    uint32_t duty = abs(speed);
     ledc_set_duty(PWM_MODE, PWM_CHANNEL_2, duty);
     ledc_update_duty(PWM_MODE, PWM_CHANNEL_2);
 }
@@ -138,9 +138,9 @@ void motor_control_2(int speed, bool type) {
 void motor_control_3(int speed, bool type) {
     // Setting the start pin
     if (speed != 0) {
-        gpio_set_level(START_PIN_3, 1); // Motor On
+        gpio_set_level(START_PIN_3, 0); // Motor On
     } else {
-        gpio_set_level(START_PIN_3, 0); // Motor Off
+        gpio_set_level(START_PIN_3, 1); // Motor Off
     }
 
     // Setting the direction pin
@@ -150,7 +150,7 @@ void motor_control_3(int speed, bool type) {
         gpio_set_level(DIR_PIN_3, 1); // Reverse
     }
 
-    uint32_t duty = 255 - abs(speed);
+    uint32_t duty = abs(speed);
     ledc_set_duty(PWM_MODE, PWM_CHANNEL_3, duty);
     ledc_update_duty(PWM_MODE, PWM_CHANNEL_3);
 }
