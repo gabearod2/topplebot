@@ -159,6 +159,10 @@ static void ahrs_task(void *arg)
     float w, x, y, z;
     ahrs_get_quaternion(&w, &x, &y, &z);
 
+    float yaw, pitch, roll;
+    ahrs_get_euler_in_degrees(&yaw, &pitch, &roll);
+    ESP_LOGI(TAG, "Current omega_z: %.3f", vg.z); // omega_y: %.3f, omega_x: %.3f", vg.x, vg.y, vg.z);//Commanded Speed 
+
     // Assinging the result to the shared doubles.
     // Lock the mutex before updating shared data
     if (xSemaphoreTake(imu_message_mutex, portMAX_DELAY))
@@ -175,16 +179,18 @@ static void ahrs_task(void *arg)
     // Example motor control logic for motor 1 (x-axis rotation)
     //if (q_x > 0.0) 
     //{
+    /*
     int speed = (int) 255*q_x;
-    if (abs(speed) < 255 && abs(speed) > 5) 
+    if (abs(speed) < 100 && abs(speed) > 5) 
     {
       motor_control_3(speed, true);  // Move with quaternion
     } else 
     {
       motor_control_3(0, true);    // Stop
     }
-    ESP_LOGI(TAG, "Current q_x %.3f", q_x);//Commanded Speed 
-    ESP_LOGI(TAG, "Commanded Speed %d", speed);
+    */
+    //ESP_LOGI(TAG, "Current q_x %.3f", q_x);//Commanded Speed 
+    //ESP_LOGI(TAG, "Commanded Speed %d", speed);
 
     // Example motor control logic for motor 2 (y-axis rotation)
     //if (q_y > 0.1) 

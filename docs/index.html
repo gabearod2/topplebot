@@ -130,5 +130,49 @@
                 gyroscope; picture-in-picture" allowfullscreen></iframe>
     </p>
 
+<h2>Motor Selection Calculator</h2>
+<p>Use this calculator to estimate the required motor torque and acceleration based on your ToppleBot's size and mass.</p>
+
+<!-- User Inputs -->
+<label>Cube Size (m): <input type="number" id="cubeSize" step="0.01" value="0.2"></label><br>
+<label>Cube Mass (kg): <input type="number" id="cubeMass" step="0.1" value="2.0"></label><br>
+<label>Reaction Wheel Mass (kg): <input type="number" id="wheelMass" step="0.1" value="0.5"></label><br>
+<label>Reaction Wheel Radius (m): <input type="number" id="wheelRadius" step="0.01" value="0.05"></label><br>
+<label>Target Acceleration (rad/s²): <input type="number" id="targetAcceleration" step="0.1" value="5.0"></label><br>
+<button onclick="calculateMotorSpecs()">Calculate</button>
+
+<!-- Results -->
+<p id="result"></p>
+
+<script>
+function calculateMotorSpecs() {
+    let cubeSize = parseFloat(document.getElementById("cubeSize").value);
+    let cubeMass = parseFloat(document.getElementById("cubeMass").value);
+    let wheelMass = parseFloat(document.getElementById("wheelMass").value);
+    let wheelRadius = parseFloat(document.getElementById("wheelRadius").value);
+    let targetAcceleration = parseFloat(document.getElementById("targetAcceleration").value);
+
+    // Cube inertia (approximate uniform mass)
+    let I_cube = (1/6) * cubeMass * Math.pow(cubeSize, 2);
+
+    // Reaction wheel inertia
+    let I_wheel = (1/2) * wheelMass * Math.pow(wheelRadius, 2);
+
+    // Required torque
+    let requiredTorque = I_cube * targetAcceleration;
+    
+    // Motor acceleration needed
+    let motorAcceleration = requiredTorque / I_wheel;
+
+    document.getElementById("result").innerHTML = `
+        <b>Results:</b><br>
+        Required Torque: ${requiredTorque.toFixed(2)} Nm <br>
+        Motor Acceleration: ${motorAcceleration.toFixed(2)} rad/s² <br>
+        Suggested Motor Power: ${(requiredTorque * motorAcceleration).toFixed(2)} W
+    `;
+}
+</script>
+
+
 </body>
 </html>
