@@ -139,6 +139,10 @@ static void ahrs_task(void *arg)
   ahrs_init(SAMPLE_FREQ_Hz, 0.8);
   memset(&msg, 0, sizeof(msg)); 
 
+  // Initializing variables before the loop:
+  float w, x, y, z;
+  float yaw, pitch, roll;
+
   // Loop to update AHRS and assign imu info to mutex
   while (true)
   {
@@ -155,16 +159,16 @@ static void ahrs_task(void *arg)
                 va.x, va.y, va.z,
                 vm.x, vm.y, vm.z);
 
-    // Getting the quaternion from the algorithm
-    float w, x, y, z;
+    // Getting the quaternion from the AHRS algorithm
     ahrs_get_quaternion(&w, &x, &y, &z);
 
-    float yaw, pitch, roll;
+    // Getting the euler angles from the AHRS algorithm
     ahrs_get_euler_in_degrees(&yaw, &pitch, &roll);
-    ESP_LOGI(TAG, "Current omega_z: %.3f", vg.z); // omega_y: %.3f, omega_x: %.3f", vg.x, vg.y, vg.z);//Commanded Speed 
 
-    // Assinging the result to the shared doubles.
-    // Lock the mutex before updating shared data
+    // Logging for checking...
+    ESP_LOGI(TAG, "Current omega_z: %.3f", vg.z); 
+
+    // Assigning the result to the shared doubles, lock the mutex before updating shared data
     if (xSemaphoreTake(imu_message_mutex, portMAX_DELAY))
     {
       q_w = w;
@@ -173,13 +177,15 @@ static void ahrs_task(void *arg)
       q_z = z;
       xSemaphoreGive(imu_message_mutex);
     }
+  
+    /*  ----  ---- ---- ---- ---- ---- MOTOR CODE TESTING ---- ---- ---- ---- ---- ---- ----
 
-    float q_des_x = 0.0;
+    TODO: Implement controller after the motor control is finalized.
+    TODO: Ensure omega is in the body frame.
+    TODO: Ensure the correct motor and omega and angle are all on the same AXLE!
 
-    // Example motor control logic for motor 1 (x-axis rotation)
-    //if (q_x > 0.0) 
-    //{
-    /*
+    // MOTOR CODE FOR TESTING...
+
     int speed = (int) 255*q_x;
     if (abs(speed) < 100 && abs(speed) > 5) 
     {
@@ -188,43 +194,52 @@ static void ahrs_task(void *arg)
     {
       motor_control_3(0, true);    // Stop
     }
-    */
-    //ESP_LOGI(TAG, "Current q_x %.3f", q_x);//Commanded Speed 
-    //ESP_LOGI(TAG, "Commanded Speed %d", speed);
+    ESP_LOGI(TAG, "Current q_x %.3f", q_x);//Commanded Speed 
+    ESP_LOGI(TAG, "Commanded Speed %d", speed);
 
-    // Example motor control logic for motor 2 (y-axis rotation)
-    //if (q_y > 0.1) 
-    //{
-    //  motor_control_2(100, true);  // Move forward
-    //} else if (q_y < -0.1) {
-    //  motor_control_2(-100, true); // Move backward
-    //} else {
-    // motor_control_2(0, true);    // Stop
-    //}
+    // MOTOR CONTROL LOGIC...
 
-    // Example motor control logic for motor 3 (z-axis rotation)
-    //if (q_z > 0.1) 
-    //{
-    //  motor_control_3(100, true);  // Move forward
-    //} else if (q_z < -0.1) {
-    //  motor_control_3(-100, true); // Move backward
-    //} else {
-    //  motor_control_3(0, true);    // Stop
-    //}
+    DOES OMEGA VECTOR ORIENTATION CHANGE? ---> should be in the body frame, but lets check this later!
 
-    // Initializing desired quaternion and error quaternion
-    float q_x_des, q_y_des, q_z_des;
-    float q_x_err, q_y_err, q_z_err;
-    float kp, ki, kd;
-
+    DO THIS OUTSIDE OF THE LOOP! (THE INITIALIZING)
+    {
+      // Initializing control variables
+      float roll_des, pitch_des, yaw_des;
+      float roll_err, pitch_err, yaw_err;
+      float roll_err_i, pitch_err_i, yaw_err_i;
+      float kp, kd, ki;
+      
+      // Change these to desired angles
+      roll_des = 0;
+      pitch_des = 0;
+      yaw_des = 0;
+      
+      // Tune these parameters
+      kp = 0;
+      kd = 0;
+      ki = 0;
+    }
     
-    //q_x_des, q_y_des, q_z_des = 0.5, 0.5, 0.5;
-    //q_x_err, q_y_err, q_z_err = q_x - q_x_des, q_y - q_y_des, q_x - q_y_des;
-    //float dw_dt_x = q_x_err * kp;
+    // Finding the current error
+    roll_err = roll - roll_des;
+    pitch_err = pitch - pitch_des;
+    yaw_err = yaw - yaw_des;
+
+    // Aggregate the integral error (Determine the correct omegas)
+    speed_1 = kp*roll_err + kd*omega_x + ki*roll_err_i;
+    speed_2 = kp*pitch_err + kd*omega_y + ki*pitch_err_i;
+    speed_3 = kp*yaw_err + kd*omega_z + ki*yaw_err_i;
+
+    CONSTRAIN THE MOTOR INPUTS
+
+    motor_control_1(speed_1, true);
+    motor_control_2(speed_2, true);
+    motor_control_3(speed_3, true);
     
     // The dt will be changing because of the two task priority structure...
-    // TODO: Implement controller after the motor control is finalized.
-    
+    ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- 
+    */
+
     taskYIELD();
   }
 }
