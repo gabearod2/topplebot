@@ -100,8 +100,6 @@ static void transform_accel_gyro(vector_t *v)
  float x = v->x;
  float y = v->y;
  float z = v->z;
- 
-
  v->x = -x;
  v->y = -z;
  v->z = -y;
@@ -117,8 +115,6 @@ static void transform_mag(vector_t *v)
  float x = v->x;
  float y = v->y;
  float z = v->z;
-
-
  v->x = -y;
  v->y = z;
  v->z = -x;
@@ -142,6 +138,17 @@ static void ahrs_task(void *arg)
   // Initializing variables before the loop:
   float w, x, y, z;
   float yaw, pitch, roll;
+  float roll_rate, pitch_rate, yaw_rate;
+
+  // Test control variables
+  float roll_des, kp, kd, ki;
+  float roll_err, roll_err_i;
+  float speed_1;
+  kp = 1.0;
+  kd = 0.5;
+  ki = 0.0;
+  roll_err_i = 0.0;
+  roll_des = 5.0;
 
   // Loop to update AHRS and assign imu info to mutex
   while (true)
@@ -165,8 +172,16 @@ static void ahrs_task(void *arg)
     // Getting the euler angles from the AHRS algorithm
     ahrs_get_euler_in_degrees(&yaw, &pitch, &roll);
 
+    // Displacing values for correct signs for initial control
+    roll = 90 - roll;
+    pitch = pitch;
+    yaw = 360 - yaw;
+    roll_rate = -vg.x;
+    pitch_rate = -vg.z;
+    yaw_rate = -vg.y;
+
     // Logging for checking...
-    ESP_LOGI(TAG, "Current omega_z: %.3f", vg.z); 
+    // ESP_LOGI(TAG, "Current roll: %.3f", roll); 
 
     // Assigning the result to the shared doubles, lock the mutex before updating shared data
     if (xSemaphoreTake(imu_message_mutex, portMAX_DELAY))
@@ -177,16 +192,33 @@ static void ahrs_task(void *arg)
       q_z = z;
       xSemaphoreGive(imu_message_mutex);
     }
+
+    roll_err = roll_des - roll;
+    roll_err_i += roll_err;
+    //ESP_LOGI(TAG, "Current roll error: %.3f", roll_err); 
+    speed_1 = kp*roll_err + kd*vg.x + ki*roll_err_i;
+    //ESP_LOGI(TAG, "Current speed command: %.3f", speed_1); 
+
+    // Clamp speed_1 between 0 and 255
+    speed_1 = fmaxf(-255.0f, fminf(speed_1, 255.0f));
+
+    ESP_LOGI(TAG, "Clamped speed command: %d", (int) speed_1);
+    //ESP_LOGI(TAG, "Clamped speed command: %.3f", speed_1);
+
+    // Send to motor control
+    motor_control_2((int) speed_1, true);
+    //motor_control_1(speed_1, true);
+
+    // Motor 1 Example Control, for a 45 degree desired pos
   
     /*  ----  ---- ---- ---- ---- ---- MOTOR CODE TESTING ---- ---- ---- ---- ---- ---- ----
 
     TODO: Implement controller after the motor control is finalized.
-    TODO: Ensure omega is in the body frame.
     TODO: Ensure the correct motor and omega and angle are all on the same AXLE!
+    TODO: Wait a few loops to command the motors for safety
 
     // MOTOR CODE FOR TESTING...
 
-    int speed = (int) 255*q_x;
     if (abs(speed) < 100 && abs(speed) > 5) 
     {
       motor_control_3(speed, true);  // Move with quaternion

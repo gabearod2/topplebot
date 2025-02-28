@@ -35,9 +35,9 @@ void motor_init() {
     gpio_set_direction(START_PIN_1, GPIO_MODE_OUTPUT);
     gpio_set_direction(START_PIN_2, GPIO_MODE_OUTPUT);
     gpio_set_direction(START_PIN_3, GPIO_MODE_OUTPUT);
-    gpio_set_level(START_PIN_1, 0);
-    gpio_set_level(START_PIN_2, 0);
-    gpio_set_level(START_PIN_3, 0);
+    gpio_set_level(START_PIN_1, 1);
+    gpio_set_level(START_PIN_2, 1);
+    gpio_set_level(START_PIN_3, 1);
   
     // Configuring DIRECTION Pins  
     esp_rom_gpio_pad_select_gpio(DIR_PIN_1);
@@ -93,12 +93,11 @@ void motor_init() {
 
 // Function to Set Motor 1 Speed
 void motor_control_1(int speed, bool type) {
-
     // Setting the start pin
-    if (speed != 0) {
-        gpio_set_level(START_PIN_1, 1); // Motor On
+    if (speed < 10 || speed > 10) {
+        gpio_set_level(START_PIN_1, 0); // Motor On
     } else {
-        gpio_set_level(START_PIN_1, 0); // Motor Off
+        gpio_set_level(START_PIN_1, 1); // Motor Off, Brake On
     }
 
     // Setting the direction pin
@@ -116,10 +115,10 @@ void motor_control_1(int speed, bool type) {
 // Function to Set Motor 2 Speed
 void motor_control_2(int speed, bool type) {
     // Setting the start pin
-    if (speed != 0) {
-        gpio_set_level(START_PIN_2, 1); // Motor On
+    if (speed < 10 || speed > 10) {
+        gpio_set_level(START_PIN_2, 0); // Motor On
     } else {
-        gpio_set_level(START_PIN_2, 0); // BRAKE
+        gpio_set_level(START_PIN_2, 1); // Motor Off, Brake On
     }
 
     // Setting the direction pin
@@ -137,10 +136,10 @@ void motor_control_2(int speed, bool type) {
 // Function to Set Motor 3 Speed
 void motor_control_3(int speed, bool type) {
     // Setting the start pin
-    if (speed != 0) {
+    if (speed < 10 || speed > 10) {
         gpio_set_level(START_PIN_3, 0); // Motor On
     } else {
-        gpio_set_level(START_PIN_3, 1); // Motor Off
+        gpio_set_level(START_PIN_3, 1); // Motor Off, Brake On
     }
 
     // Setting the direction pin
