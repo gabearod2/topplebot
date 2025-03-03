@@ -144,13 +144,14 @@ static void ahrs_task(void *arg)
 
   // Test control variables
   float roll_des, kp, kd, ki;
-  float roll_err, roll_sum;
+  float roll_err, roll_sum, roll_err_i;
   float speed_1; 
-  kp = 25.0;
-  ki = 10.0;
-  kd = 0.0;
+  kp = 105.0;
+  ki = 0.0;
+  kd = 25.0;
   roll_sum = 0;
   roll_des = 0;
+  roll_err_i = 0;
   
 
   // Loop to update AHRS and assign imu info to mutex
@@ -214,10 +215,11 @@ static void ahrs_task(void *arg)
     {
       // Integral Error
       roll_err = roll_des - roll;
+      roll_err_i += roll_err;
 
       ESP_LOGI(TAG, "Current roll desired: %.3f", roll_des);
       // Determining control input
-      speed_1 = kp*roll_rate_err + ki*roll_err + kd*roll_accel;
+      speed_1 = kp*roll_err + ki*roll_err_i + kd*roll_rate_err;
 
       // Clamp speed_1 between 0 and 255
       speed_1 = fmaxf(-255.0f, fminf(speed_1, 255.0f));
