@@ -138,17 +138,20 @@ static void ahrs_task(void *arg)
   // Initializing variables before the loop:
   float w, x, y, z;
   float yaw, pitch, roll;
-  float roll_rate, pitch_rate, yaw_rate;
+  float roll_rate_err, pitch_rate_err, yaw_rate_err;
+  float roll_accel, pitch_accel, yaw_accel;
+  int count = 0;
 
   // Test control variables
   float roll_des, kp, kd, ki;
-  float roll_err, roll_err_i;
-  float speed_1;
-  kp = 1.0;
-  kd = 0.5;
-  ki = 0.0;
-  roll_err_i = 0.0;
-  roll_des = 5.0;
+  float roll_err, roll_sum;
+  float speed_1; 
+  kp = 25.0;
+  ki = 10.0;
+  kd = 0.0;
+  roll_sum = 0;
+  roll_des = 0;
+  
 
   // Loop to update AHRS and assign imu info to mutex
   while (true)
@@ -172,16 +175,16 @@ static void ahrs_task(void *arg)
     // Getting the euler angles from the AHRS algorithm
     ahrs_get_euler_in_degrees(&yaw, &pitch, &roll);
 
-    // Displacing values for correct signs for initial control
+    // Correct signs and displacements for control
     roll = 90 - roll;
     pitch = pitch;
     yaw = 360 - yaw;
-    roll_rate = -vg.x;
-    pitch_rate = -vg.z;
-    yaw_rate = -vg.y;
-
-    // Logging for checking...
-    // ESP_LOGI(TAG, "Current roll: %.3f", roll); 
+    roll_rate_err = vg.x;
+    pitch_rate_err = vg.z;
+    yaw_rate_err = vg.y;
+    roll_accel = va.x;
+    pitch_accel = va.z;
+    yaw_accel = va.y; 
 
     // Assigning the result to the shared doubles, lock the mutex before updating shared data
     if (xSemaphoreTake(imu_message_mutex, portMAX_DELAY))
@@ -193,24 +196,35 @@ static void ahrs_task(void *arg)
       xSemaphoreGive(imu_message_mutex);
     }
 
-    roll_err = roll_des - roll;
-    roll_err_i += roll_err;
-    //ESP_LOGI(TAG, "Current roll error: %.3f", roll_err); 
-    speed_1 = kp*roll_err + kd*vg.x + ki*roll_err_i;
-    //ESP_LOGI(TAG, "Current speed command: %.3f", speed_1); 
+    if (count < 2000)
+    {
+      if (count > 499)
+      {
+        roll_sum += roll;
+      }
+      count += 1;
+      ESP_LOGI(TAG, "Current roll sum: %.3f", roll_sum);
+    }
+    else if (count == 2000)
+    {
+      roll_des = roll_sum/(1500);
+      count += 1;
+    }
+    else
+    {
+      // Integral Error
+      roll_err = roll_des - roll;
 
-    // Clamp speed_1 between 0 and 255
-    speed_1 = fmaxf(-255.0f, fminf(speed_1, 255.0f));
+      ESP_LOGI(TAG, "Current roll desired: %.3f", roll_des);
+      // Determining control input
+      speed_1 = kp*roll_rate_err + ki*roll_err + kd*roll_accel;
 
-    ESP_LOGI(TAG, "Clamped speed command: %d", (int) speed_1);
-    //ESP_LOGI(TAG, "Clamped speed command: %.3f", speed_1);
+      // Clamp speed_1 between 0 and 255
+      speed_1 = fmaxf(-255.0f, fminf(speed_1, 255.0f));
+      // Send to motor control
+      motor_control_1((int) speed_1, true);
+    }
 
-    // Send to motor control
-    motor_control_2((int) speed_1, true);
-    //motor_control_1(speed_1, true);
-
-    // Motor 1 Example Control, for a 45 degree desired pos
-  
     /*  ----  ---- ---- ---- ---- ---- MOTOR CODE TESTING ---- ---- ---- ---- ---- ---- ----
 
     TODO: Implement controller after the motor control is finalized.
