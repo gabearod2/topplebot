@@ -188,7 +188,7 @@ static void ahrs_task(void *arg)
     yaw_accel = va.y; 
 
     // Assigning the result to the shared doubles, lock the mutex before updating shared data
-    if (xSemaphoreTake(imu_message_mutex, portMAX_DELAY))
+    if (xSemaphoreTake(imu_message_mutex, 0))
     {
       q_w = w;
       q_x = x;
@@ -296,7 +296,7 @@ static void ahrs_task(void *arg)
 void imu_callback(void)
 {
   // Pulling the imu information from the mutex
-  if (xSemaphoreTake(imu_message_mutex, portMAX_DELAY))
+  if (xSemaphoreTake(imu_message_mutex, 0))
   {
     // Assign Quaternion to message
     msg.orientation.w = q_w;
