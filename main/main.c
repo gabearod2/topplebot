@@ -29,7 +29,7 @@
 #include "esp_err.h"
 #include "esp_task_wdt.h"
 
-// For the Components
+// For the MPU 9250 and Motors
 #include "driver/i2c.h"
 #include "ahrs.h"
 #include "mpu9250.h"
@@ -58,7 +58,7 @@ static const char *TAG = "main";
 #define CONFIG_CALIBRATION_APP_STACK 4096
 #define CONFIG_MAX_APP_TASK_PRIO 30
 
-// More Micro-ROS and I2C
+// More Micro-ROS and I2C Config
 #define RCCHECK(fn) { rcl_ret_t temp_rc = fn; if((temp_rc != RCL_RET_OK)){printf("Failed status on line %d: %d. Aborting.\n",__LINE__,(int)temp_rc);vTaskDelete(NULL);}}
 #define RCSOFTCHECK(fn) { rcl_ret_t temp_rc = fn; if((temp_rc != RCL_RET_OK)){printf("Failed status on line %d: %d. Continuing.\n",__LINE__,(int)temp_rc);}}
 #define I2C_MASTER_NUM I2C_NUM_0 /*!< I2C port number for master dev */
@@ -316,11 +316,6 @@ void imu_callback(void)
 
     xSemaphoreGive(imu_message_mutex);
   }
-
-  // Assign covariances as unknowns (they are not needed)
-  memset(msg.orientation_covariance, 0, sizeof(msg.orientation_covariance));
-  memset(msg.angular_velocity_covariance, 0, sizeof(msg.angular_velocity_covariance));
-  memset(msg.linear_acceleration_covariance, 0, sizeof(msg.linear_acceleration_covariance));
 
   // Publish the message and check for errors
   rcl_ret_t ret = rcl_publish(&publisher, &msg, NULL);
