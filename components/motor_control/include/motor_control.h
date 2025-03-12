@@ -16,6 +16,7 @@ void motor_init();
 void motor_control_1(int speed, bool type);
 void motor_control_2(int speed, bool type);
 void motor_control_3(int speed, bool type);
+void servo_control(int angle);
 
 #endif // MOTOR_CONTROL_H
 //=====================================================================================================

@@ -76,17 +76,36 @@ TaskHandle_t calibrationTaskHandle = NULL;
 calibration_t cal = {
 
 // magnetometer offset from calibration
-.mag_offset = {.x = 29.093750, .y = 50.800781, .z = -68.906250},
-.mag_scale = {.x = 0.988142, .y = 0.999372, .z = 1.012790},
+.mag_offset = {.x = -3.046875, .y = 83.751953, .z = -95.554688},
+.mag_scale = {.x = 0.993345, .y = 0.990171, .z = 1.016908},
 
 // accelerometer offsets from calibration
-.accel_offset = {.x = -0.010017, .y = 0.056238, .z = -0.372841},
-.accel_scale_lo = {.x = 0.995519, .y = 1.031251, .z = 0.828868},
-.accel_scale_hi = {.x = -0.998890, .y = -0.966249, .z = -1.204864},
+.accel_offset = {.x = -0.064261, .y = -0.032425, .z = 0.060752},
+.accel_scale_lo = {.x = 0.974870, .y = 0.986224, .z = 1.049794},
+.accel_scale_hi = {.x = -1.022966, .y = -1.014928, .z = -0.971446},
 
 // gyroscope bias from calibration, averaged, from 01/18
-.gyro_bias_offset = {.x = -3.210659, .y = 2.017682, .z = -0.724418}
+.gyro_bias_offset = {.x = 1.040601, .y = -2.461674, .z = 1.000426}
 };
+
+struct quaternion {
+  float w, x, y, z;
+};
+
+// Quaternion multiplication: q1 * q2 → q3
+static void quaternion_multiply(const struct quaternion *q1, const struct quaternion *q2, struct quaternion *q3) {
+  q3->w = q1->w * q2->w - q1->x * q2->x - q1->y * q2->y - q1->z * q2->z;
+  q3->x = q1->w * q2->x + q1->x * q2->w + q1->y * q2->z - q1->z * q2->y;
+  q3->y = q1->w * q2->y - q1->x * q2->z + q1->y * q2->w + q1->z * q2->x;
+  q3->z = q1->w * q2->z + q1->x * q2->y - q1->y * q2->x + q1->z * q2->w;
+}
+
+// Quaternion inverse (conjugate for unit quaternions)
+static void quaternion_inverse(struct quaternion *q) {
+  q->x = -q->x;
+  q->y = -q->y;
+  q->z = -q->z;
+}
 
 /**
 * Transformation for accelerometer and gyroscope:
@@ -136,24 +155,18 @@ static void ahrs_task(void *arg)
   memset(&msg, 0, sizeof(msg)); 
 
   // Initializing variables before the loop:
-  float w, x, y, z;
-  float yaw, pitch, roll;
+  struct quaternion q_des, q_des_inv, q_current, q_err;
+  float roll_err, pitch_err, yaw_err;
   float roll_rate_err, pitch_rate_err, yaw_rate_err;
-  float roll_accel, pitch_accel, yaw_accel;
   int count = 0;
+  float kp = 155.0;
+  float ki = 0.0;
+  float kd = 25.0;
+  float speed_1, speed_2, speed_3; 
+  int angle = 1;
+  q_des = (struct quaternion){0, 0, 0, 0};
 
-  // Test control variables
-  float roll_des, kp, kd, ki;
-  float roll_err, roll_sum, roll_err_i;
-  float speed_1; 
-  kp = 105.0;
-  ki = 0.0;
-  kd = 25.0;
-  roll_sum = 0;
-  roll_des = 0;
-  roll_err_i = 0;
   
-
   // Loop to update AHRS and assign imu info to mutex
   while (true)
   {
@@ -170,62 +183,85 @@ static void ahrs_task(void *arg)
                 va.x, va.y, va.z,
                 vm.x, vm.y, vm.z);
 
-    // Getting the quaternion from the AHRS algorithm
-    ahrs_get_quaternion(&w, &x, &y, &z);
+    // Getting the quaternion from the AHRS algorithm from NED
+    ahrs_get_quaternion(&q_current.w, &q_current.x, &q_current.y, &q_current.z);
 
-    // Getting the euler angles from the AHRS algorithm
-    ahrs_get_euler_in_degrees(&yaw, &pitch, &roll);
-
-    // Correct signs and displacements for control
-    roll = 90 - roll;
-    pitch = pitch;
-    yaw = 360 - yaw;
-    roll_rate_err = vg.x;
-    pitch_rate_err = vg.z;
-    yaw_rate_err = vg.y;
-    roll_accel = va.x;
-    pitch_accel = va.z;
-    yaw_accel = va.y; 
+    roll_rate_err = -vg.x;
+    pitch_rate_err = -vg.y;
+    yaw_rate_err = -vg.z;
+    
+    /*
+    Roll Control - Motor 2
+    Pitch Contorl - Motor 3
+    Yaw Control - Motor 1
+    */
 
     // Assigning the result to the shared doubles, lock the mutex before updating shared data
     if (xSemaphoreTake(imu_message_mutex, 0))
     {
-      q_w = w;
-      q_x = x;
-      q_y = y;
-      q_z = z;
+      q_w = q_current.w;
+      q_x = q_current.x;
+      q_y = q_current.y;
+      q_z = q_current.z;
       xSemaphoreGive(imu_message_mutex);
     }
+
+    //ESP_LOGI(TAG, "QUATERNION { X:%.3f Y: %.3f Z: %.3f W: %.3f }", q_x,q_y,q_z,q_w);
 
     if (count < 2000)
     {
       if (count > 499)
       {
-        roll_sum += roll;
+        q_des.w += q_current.w;
+        q_des.x += q_current.x;
+        q_des.y += q_current.y;
+        q_des.z += q_current.z;       
       }
       count += 1;
-      ESP_LOGI(TAG, "Current roll sum: %.3f", roll_sum);
     }
     else if (count == 2000)
     {
-      roll_des = roll_sum/(1500);
+      q_des.w = q_des.w / 1500.0f;
+      q_des.x = q_des.x / 1500.0f;
+      q_des.y = q_des.y / 1500.0f;
+      q_des.z = q_des.z / 1500.0f;
+      quaternion_inverse(&q_des);
       count += 1;
     }
     else
     {
-      // Integral Error
-      roll_err = roll_des - roll;
-      roll_err_i += roll_err;
+      // Quaternion Error
+      quaternion_multiply(&q_current, &q_des, &q_err);
 
-      ESP_LOGI(TAG, "Current roll desired: %.3f", roll_des);
+      // Error Definition
+      roll_err = -2*180*q_err.x/3.1415;
+      pitch_err = -2*180*q_err.y/3.1415;
+      yaw_err = -2*180*q_err.z/3.1415;
+
       // Determining control input
-      speed_1 = kp*roll_err + ki*roll_err_i + kd*roll_rate_err;
+      speed_1 = kp*yaw_err + kd*yaw_rate_err;
+      speed_2 = kp*roll_err + kd*roll_rate_err;
+      speed_3 = kp*pitch_err + kd*pitch_rate_err;
+      //ESP_LOGI(TAG, "Current speed: %.3f", roll);
 
       // Clamp speed_1 between 0 and 255
       speed_1 = fmaxf(-255.0f, fminf(speed_1, 255.0f));
+      speed_2 = fmaxf(-255.0f, fminf(speed_2, 255.0f));
+      speed_3 = fmaxf(-255.0f, fminf(speed_3, 255.0f));
+
       // Send to motor control
-      motor_control_1((int) speed_1, true);
+      // motor_control_1((int) speed_1, true);
+      // motor_control_2((int) speed_2, true);
+      motor_control_3((int) speed_3, true);
+      count += 1;
     }
+
+    /*  ----  ---- ---- ---- ---- ---- SERVO MOTOR CONTROL ---- ---- ---- ---- ---- ---- --- 
+    if (count % 600 == 0) {
+      angle = (angle == -90) ? 90 : -90; // Toggle between -90° and 90°
+    }
+    servo_control(angle);
+    */
 
     /*  ----  ---- ---- ---- ---- ---- MOTOR CODE TESTING ---- ---- ---- ---- ---- ---- ----
 
@@ -319,11 +355,14 @@ void imu_callback(void)
 
   // Publish the message and check for errors
   rcl_ret_t ret = rcl_publish(&publisher, &msg, NULL);
+
+  /* Debugging ...
   if (ret == RCL_RET_OK) {
     ESP_LOGI(TAG, "IMU Message published successfully");
   } else {
     ESP_LOGI(TAG, "Failed to publish IMU Message");
   }
+  */
 }
 
 // Task Function for Micro-ROS and Calibration
@@ -365,9 +404,9 @@ static void micro_ros_task(void *arg)
   // Looping to update the quaternion and publish
   while(1)
   {
-    ESP_LOGI(TAG, "Calling imu_callback()");
+    // ESP_LOGI(TAG, "Calling imu_callback()");
     imu_callback();
-    ESP_LOGI(TAG, "imu_callback() finished. Waiting for next cycle...");
+    // ESP_LOGI(TAG, "imu_callback() finished. Waiting for next cycle...");
     vTaskDelayUntil(&xLastWakeTime, xFrequency);  // Wait 20ms for next cycle
   }
 
