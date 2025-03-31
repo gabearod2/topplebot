@@ -159,10 +159,12 @@ static void ahrs_task(void *arg)
   float roll_err, pitch_err, yaw_err;
   float roll_rate_err, pitch_rate_err, yaw_rate_err;
   int count = 0;
-  float kp = 155.0;
+  float kp = 15.0;
   float ki = 0.0;
-  float kd = 25.0;
-  float speed_1, speed_2, speed_3; 
+  float kd = 5.0;
+  float speed_1 = 0;
+  float speed_2 = 0;
+  float speed_3 = 0; 
   int angle = 1;
   q_des = (struct quaternion){0, 0, 0, 0};
 
@@ -239,9 +241,9 @@ static void ahrs_task(void *arg)
       yaw_err = -2*180*q_err.z/3.1415;
 
       // Determining control input
-      speed_1 = kp*yaw_err + kd*yaw_rate_err;
-      speed_2 = kp*roll_err + kd*roll_rate_err;
-      speed_3 = kp*pitch_err + kd*pitch_rate_err;
+      speed_1 += kp*yaw_err + kd*yaw_rate_err;
+      speed_2 += kp*roll_err + kd*roll_rate_err;
+      speed_3 += kp*pitch_err + kd*pitch_rate_err;
       //ESP_LOGI(TAG, "Current speed: %.3f", roll);
 
       // Clamp speed_1 between 0 and 255
