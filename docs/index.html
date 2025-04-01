@@ -33,6 +33,13 @@
             text-decoration: underline;
         }
     </style>
+
+    <!-- MathJax for LaTeX equation rendering -->
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async
+      src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js">
+    </script>
+    
 </head>
 <body>
     <h1>The ToppleBot Project</h1>
@@ -177,7 +184,28 @@
             Suggested Motor: Nidec 24H
         `;
     }
-</script>
 
+
+</script>
+<h2>Odometry System</h2>
+
+<p>
+    We start by defining the node positions in the body-fixed frame \(\mathbf{v}_i^b\). These are dependent on the cube's side length, \(l\), which can be manually updated for arbitrary cube size. We then take the first read quaternion, \(\mathbf{q}_{\text{init}}\), find it's inverse and use it as a correction term for all future quaternions. This 
+
+    $$
+        \mathbf{q}_{\text{corr}} = \mathbf{q}_{\text{init}}^{-1}
+    $$
+
+    $$
+        \mathbf{v}_i^w = R(\mathbf{q}(t)) \cdot \mathbf{v}_i
+    $$
+
+
+
+    $$
+        \mathbf{v}_i^w = R(\mathbf{q}(t)) \cdot \mathbf{v}_i
+    $$
+
+</p>
 </body>
 </html>
