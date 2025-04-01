@@ -187,83 +187,24 @@
 
 
 </script>
-<h2>Odometry System Description</h2>
+<h2>Odometry System</h2>
 
 <p>
-    We start by defining the node positions in the body-fixed frame \( \mathbf{p}_i^b \). Nodes \( i = 0 \) to \( 7 \) represent the ToppleBot's corners, and \( i = 8 \) represents the center (origin) of the body-fixed frame. These positions are parameterized by the cube's side length \( l \), which can be adjusted to support an arbitrary cube size.
-
-    During initialization, we acquire the first quaternion from the IMU, \( \mathbf{q}_{\text{init}} \), and compute its inverse as a correction factor:
+    We start by defining the node positions in the body-fixed frame \(\mathbf{v}_i^b\). These are dependent on the cube's side length, \(l\), which can be manually updated for arbitrary cube size. We then take the first read quaternion, \(\mathbf{q}_{\text{init}}\), find it's inverse and use it as a correction term for all future quaternions. This 
 
     $$
         \mathbf{q}_{\text{corr}} = \mathbf{q}_{\text{init}}^{-1}
     $$
 
-    All subsequent IMU quaternions are corrected using quaternion multiplication:
-
     $$
-        \mathbf{q}(t) = \mathbf{q}_{\text{corr}} \otimes \mathbf{q}_{\text{raw}}(t)
+        \mathbf{v}_i^w = R(\mathbf{q}(t)) \cdot \mathbf{v}_i
     $$
 
-    Node positions in the world frame are then computed using an active rotation via the quaternion-derived rotation matrix:
+
 
     $$
-        \mathbf{p}_i^w = R(\mathbf{q}(t)) \cdot \mathbf{p}_i^b
+        \mathbf{v}_i^w = R(\mathbf{q}(t)) \cdot \mathbf{v}_i
     $$
-
-    The "balancing node", the one determined to be touching the earth's \(xy\) plane, can be determined using it's difference from \(\mathbf{g}_{\text{dir}}\) in the world frame. First, we find the normalized vectors from the body-fixed origin to the node positions in the world frame:
-
-    $$
-        \mathbf{u}_i = \frac{\mathbf{p}_i^w - \mathbf{p}_8^w}{\left\| \mathbf{p}_i^w - \mathbf{p}_8^w \right\|}
-    $$
-
-    We know that in the world frame, gravity points straight down:
-    
-    $$
-        \mathbf{g}_{\text{dir}} = \begin{bmatrix} 0 \\ 0 \\ -1 \end{bmatrix}
-    $$
-
-    Our balancing node is then determined as follows: 
-    
-    $$
-        i_{\text{balance}} = \arg\min_i \left\| \mathbf{u}_i - \mathbf{g}_{\text{dir}} \right\|
-    $$
-
-    Once the balancing node index \( i_{\text{balance}} \) is identified, we compute two key translations:
-
-    <ul>
-        <li>\( \mathbf{p}_{\text{bl}} \): the position of the body-fixed frame origin (node 8) relative to the balancing node in the world frame.</li> 
-        <li>\( \mathbf{p}_{\text{bn}} \): the cumulative displacement of the balancing node in the world frame.</li> 
-    </ul>
-
-    If the balancing node changes from the previous time step, we calculate its displacement:
-
-    $$
-        \Delta \mathbf{p}_{\text{bn}} = \mathbf{p}_{i_{\text{balance}}}^w - \mathbf{p}_{i_{\text{last}}}^w
-    $$
-
-    and update the global position of the balancing node:
-
-    $$
-        \mathbf{p}_{\text{bn}}(t) = \mathbf{p}_{\text{bn}}(t-1) + \Delta \mathbf{p}_{\text{bn}}
-    $$
-
-    The translation from the balancing node to the base link (node 8) is given by:
-
-    $$
-        \mathbf{p}_{\text{bl}} = \mathbf{p}_8^w - \mathbf{p}_{i_{\text{balance}}}^w
-    $$
-
-    Finally, two transforms are broadcast:
-
-    $$
-        T_{\text{base\_link}}^{\text{balancing\_node}} = \left( \mathbf{p}_{\text{bl}},\ \mathbf{q}(t) \right)
-    $$
-
-    $$
-        T_{\text{balancing\_node}}^{\text{world}} = \left( \mathbf{p}_{\text{bn}},\ \begin{bmatrix} 0 \\ 0 \\ 0 \\ 1 \end{bmatrix} \right)
-    $$
-
-    These transforms enable visualization and odometry within RViz, where the robot's orientation and position are expressed with respect to the world frame via the dynamically selected balancing node.
 
 </p>
 </body>
