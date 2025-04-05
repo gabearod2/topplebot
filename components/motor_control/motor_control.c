@@ -3,25 +3,25 @@
 #include "driver/gpio.h"
 
 // Motor 1 Config
-#define START_PIN_1   5
-#define DIR_PIN_1     23
-#define PWM_PIN_1     25
+#define START_PIN_1   17
+#define DIR_PIN_1     4
+#define PWM_PIN_1     16
 #define PWM_CHANNEL_1 LEDC_CHANNEL_1
 
 // Motor 2 Config
-#define START_PIN_2   17
-#define DIR_PIN_2     32 // changed from 22... works now...
-#define PWM_PIN_2     26
+#define START_PIN_2   13
+#define DIR_PIN_2     2 // changed from 22... works now...
+#define PWM_PIN_2     12
 #define PWM_CHANNEL_2 LEDC_CHANNEL_2
 
 // Motor 3 Config
-#define START_PIN_3   16
-#define DIR_PIN_3     21
-#define PWM_PIN_3     27
+#define START_PIN_3   33
+#define DIR_PIN_3     25
+#define PWM_PIN_3     32
 #define PWM_CHANNEL_3 LEDC_CHANNEL_3
 
 // Servo Config
-#define SERVO_PIN       4
+#define SERVO_PIN       4 // 23, 39, 34
 #define SERVO_CHANNEL   LEDC_CHANNEL_4  // Use a new PWM channel for the servo
 #define SERVO_TIMER     LEDC_TIMER_1    // Use a separate timer from the motors
 #define SERVO_FREQ      50              // Standard 50Hz for servos

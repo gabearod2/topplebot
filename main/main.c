@@ -250,18 +250,18 @@ static void ahrs_task(void *arg)
       speed_3 = fmaxf(-255.0f, fminf(speed_3, 255.0f));
 
       // Send to motor control
-      // motor_control_1((int) speed_1, true);
+      //motor_control_3((int) speed_1, true);
       // motor_control_2((int) speed_2, true);
-      motor_control_3((int) speed_3, true);
+      //motor_control_3((int) speed_3, true);
       count += 1;
     }
 
-    /*  ----  ---- ---- ---- ---- ---- SERVO MOTOR CONTROL ---- ---- ---- ---- ---- ---- --- 
+    //  ----  ---- ---- ---- ---- ---- SERVO MOTOR CONTROL ---- ---- ---- ---- ---- ---- --- 
     if (count % 600 == 0) {
       angle = (angle == -90) ? 90 : -90; // Toggle between -90° and 90°
     }
     servo_control(angle);
-    */
+    //
 
     /*  ----  ---- ---- ---- ---- ---- MOTOR CODE TESTING ---- ---- ---- ---- ---- ---- ----
 
