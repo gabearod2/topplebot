@@ -5,6 +5,7 @@
     "ros.distro": "humble",
     "C_Cpp.dimInactiveRegions": false,
     "files.associations": {
-        "*.ipp": "c"
+        "*.ipp": "c",
+        "cstdint": "c"
     }
 }

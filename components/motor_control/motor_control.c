@@ -4,7 +4,7 @@
 
 // Motor 1 Config
 #define START_PIN_1   17
-#define DIR_PIN_1     4
+#define DIR_PIN_1     23 //4
 #define PWM_PIN_1     16
 #define PWM_CHANNEL_1 LEDC_CHANNEL_1
 
@@ -29,7 +29,7 @@
 
 // Other Settings
 #define PWM_TIMER   LEDC_TIMER_0
-#define PWM_MODE    LEDC_HIGH_SPEED_MODE
+#define PWM_MODE    LEDC_LOW_SPEED_MODE
 #define PWM_FREQ    20000  // 20 kHz
 #define PWM_RES     LEDC_TIMER_8_BIT  // 8-bit resolution
 
@@ -187,15 +187,22 @@ void motor_control_3(int speed, bool type) {
 }
 
 void servo_control(int angle) {
-    // Try a wider range of duty cycles
-    int min_duty = 2000;  // -90° (~0.5ms pulse, might be too far)
-    int max_duty = 8500;  // +90° (~2.5ms pulse, might be too far)
+    // Full 1ms to 2ms pulse range
+    int min_duty = 1000;  // 3277
+    int max_duty = 4500;  // 6553
+    int duty = 0;
 
-    // Map angle (-90 to +90) to duty cycle (min_duty to max_duty)
-    int duty = min_duty + ((angle + 90) * (max_duty - min_duty)) / 180;
+    if (angle == 1)
+    {
+        duty = max_duty;
+    }
+    else
+    {
+        duty = min_duty;
+    }
 
-    // Apply new duty cycle
     ledc_set_duty(PWM_MODE, SERVO_CHANNEL, duty);
     ledc_update_duty(PWM_MODE, SERVO_CHANNEL);
 }
+
 

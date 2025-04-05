@@ -56,7 +56,10 @@ static const char *TAG = "main";
 #define CONFIG_MICRO_ROS_APP_TASK_PRIO 5
 #define CONFIG_AHRS_APP_STACK 4096
 #define CONFIG_CALIBRATION_APP_STACK 4096
+#define CONFIG_SERVO_APP_STACK 2048
+#define CONFIG_SERVO_APP_TASK_PRIO 1
 #define CONFIG_MAX_APP_TASK_PRIO 30
+
 
 // More Micro-ROS and I2C Config
 #define RCCHECK(fn) { rcl_ret_t temp_rc = fn; if((temp_rc != RCL_RET_OK)){printf("Failed status on line %d: %d. Aborting.\n",__LINE__,(int)temp_rc);vTaskDelete(NULL);}}
@@ -71,6 +74,7 @@ sensor_msgs__msg__Imu msg;
 TaskHandle_t ahrsTaskHandle = NULL;
 TaskHandle_t rosTaskHandle = NULL;
 TaskHandle_t calibrationTaskHandle = NULL;
+TaskHandle_t servoTaskHandle = NULL;
 
 // Calibration Constants for IMU
 calibration_t cal = {
@@ -256,12 +260,16 @@ static void ahrs_task(void *arg)
       count += 1;
     }
 
+    /*
+
     //  ----  ---- ---- ---- ---- ---- SERVO MOTOR CONTROL ---- ---- ---- ---- ---- ---- --- 
     if (count % 600 == 0) {
       angle = (angle == -90) ? 90 : -90; // Toggle between -90° and 90°
+      servo_control(angle);
+      ESP_LOGI(TAG, "Servo Angle: %d", angle);
     }
-    servo_control(angle);
-    //
+    
+    */
 
     /*  ----  ---- ---- ---- ---- ---- MOTOR CODE TESTING ---- ---- ---- ---- ---- ---- ----
 
@@ -417,6 +425,18 @@ static void micro_ros_task(void *arg)
   vTaskDelete(NULL); 
 }
 
+static void servo_control_task(void *arg)
+{
+  const TickType_t delay = pdMS_TO_TICKS(20);  // 50 Hz refresh
+int angle = -90;
+while (1) {
+  servo_control(angle);
+  ESP_LOGI("SERVO", "Set angle %d", angle);
+  angle = (angle == -1) ? 1 : -1;
+  vTaskDelay(pdMS_TO_TICKS(1000));  // 1 Hz toggle
+}
+}
+
 // Task to calbiration the MPU9250
 static void calibration_task(void *arg)
 {
@@ -556,6 +576,16 @@ void app_main(void)
       NULL,
       CONFIG_MICRO_ROS_APP_TASK_PRIO,
       &rosTaskHandle,
+      tskNO_AFFINITY);
+
+    // Servo Control Task
+    xTaskCreatePinnedToCore(
+      servo_control_task,
+      "servo_control_task",
+      CONFIG_SERVO_APP_STACK,
+      NULL,
+      CONFIG_SERVO_APP_TASK_PRIO,
+      &servoTaskHandle,
       tskNO_AFFINITY);
   #endif
 }
