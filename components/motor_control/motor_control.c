@@ -4,13 +4,13 @@
 
 // Motor 1 Config
 #define START_PIN_1   5
-#define DIR_PIN_1     23
+#define DIR_PIN_1     23 // changed from 23...
 #define PWM_PIN_1     25
 #define PWM_CHANNEL_1 LEDC_CHANNEL_1
 
 // Motor 2 Config
 #define START_PIN_2   17
-#define DIR_PIN_2     32 // changed from 22... works now...
+#define DIR_PIN_2     32 // changed from 22... works now... 32
 #define PWM_PIN_2     26
 #define PWM_CHANNEL_2 LEDC_CHANNEL_2
 

@@ -76,16 +76,16 @@ TaskHandle_t calibrationTaskHandle = NULL;
 calibration_t cal = {
 
 // magnetometer offset from calibration
-.mag_offset = {.x = -3.046875, .y = 83.751953, .z = -95.554688},
-.mag_scale = {.x = 0.993345, .y = 0.990171, .z = 1.016908},
+.mag_offset = {.x = 17.244791, .y = 40.773438, .z = 7.773436},
+.mag_scale = {.x = 0.999196, .y = 1.010870, .z = 0.993069},
 
 // accelerometer offsets from calibration
-.accel_offset = {.x = -0.064261, .y = -0.032425, .z = 0.060752},
-.accel_scale_lo = {.x = 0.974870, .y = 0.986224, .z = 1.049794},
-.accel_scale_hi = {.x = -1.022966, .y = -1.014928, .z = -0.971446},
+.accel_offset = {.x = -0.102838, .y = 0.007450, .z = -0.093568},
+.accel_scale_lo = {.x = 0.952312, .y = 1.007089, .z = 0.961626},
+.accel_scale_hi = {.x = -1.051078, .y = -0.994280, .z = -1.048755},
 
 // gyroscope bias from calibration, averaged, from 01/18
-.gyro_bias_offset = {.x = 1.040601, .y = -2.461674, .z = 1.000426}
+.gyro_bias_offset = {.x = -2.731378, .y = 5.108589, .z = 0.935637}
 };
 
 struct quaternion {
@@ -159,12 +159,12 @@ static void ahrs_task(void *arg)
   float roll_err, pitch_err, yaw_err;
   float roll_rate_err, pitch_rate_err, yaw_rate_err;
   int count = 0;
-  float kp = 15.0;
+  float kp = 75.0;
   float ki = 0.0;
-  float kd = 5.0;
-  float speed_1 = 0;
-  float speed_2 = 0;
-  float speed_3 = 0; 
+  float kd = 20.0;
+  float speed_roll = 0;
+  float speed_pitch = 0;
+  float speed_yaw = 0; 
   int angle = 1;
   q_des = (struct quaternion){0, 0, 0, 0};
 
@@ -188,14 +188,14 @@ static void ahrs_task(void *arg)
     // Getting the quaternion from the AHRS algorithm from NED
     ahrs_get_quaternion(&q_current.w, &q_current.x, &q_current.y, &q_current.z);
 
-    roll_rate_err = -vg.x;
+    roll_rate_err = vg.x;
     pitch_rate_err = -vg.y;
     yaw_rate_err = -vg.z;
     
     /*
-    Roll Control - Motor 2
+    Roll Control - Motor 1
     Pitch Contorl - Motor 3
-    Yaw Control - Motor 1
+    Yaw Control - Motor 2
     */
 
     // Assigning the result to the shared doubles, lock the mutex before updating shared data
@@ -212,49 +212,50 @@ static void ahrs_task(void *arg)
 
     if (count < 2000)
     {
-      if (count > 499)
-      {
-        q_des.w += q_current.w;
-        q_des.x += q_current.x;
-        q_des.y += q_current.y;
-        q_des.z += q_current.z;       
-      }
       count += 1;
     }
     else if (count == 2000)
     {
-      q_des.w = q_des.w / 1500.0f;
-      q_des.x = q_des.x / 1500.0f;
-      q_des.y = q_des.y / 1500.0f;
-      q_des.z = q_des.z / 1500.0f;
+      q_des.w = q_current.w;
+      q_des.x = q_current.x;
+      q_des.y = q_current.y;
+      q_des.z = q_current.z;
       quaternion_inverse(&q_des);
       count += 1;
     }
     else
     {
       // Quaternion Error
-      quaternion_multiply(&q_current, &q_des, &q_err);
+      quaternion_multiply(&q_des, &q_current, &q_err);
 
       // Error Definition
-      roll_err = -2*180*q_err.x/3.1415;
+      roll_err = 2*180*q_err.x/3.1415;
       pitch_err = -2*180*q_err.y/3.1415;
       yaw_err = -2*180*q_err.z/3.1415;
 
       // Determining control input
-      speed_1 += kp*yaw_err + kd*yaw_rate_err;
-      speed_2 += kp*roll_err + kd*roll_rate_err;
-      speed_3 += kp*pitch_err + kd*pitch_rate_err;
-      //ESP_LOGI(TAG, "Current speed: %.3f", roll);
+      speed_roll = kp*roll_err + kd*roll_rate_err;
+      speed_pitch = kp*pitch_err + kd*pitch_rate_err;
+      speed_yaw = kp*yaw_err + kd*yaw_rate_err;
+      //ESP_LOGI(TAG, "Current pitch_err: %.3f", pitch_err);
+      if (count % 20 == 0)
+      {
+        //ESP_LOGI(TAG, "Omega_x, Omega_y, Omega_z: {x = %.3f,y = %.3f,z = %.3f,}",vg.x,vg.y,vg.z);
+        ESP_LOGI(TAG, "QuaternionError: {%.3f, %.3f, %.3f}", q_err.x, q_err.y, q_err.z);
+      }
+      
 
       // Clamp speed_1 between 0 and 255
-      speed_1 = fmaxf(-255.0f, fminf(speed_1, 255.0f));
-      speed_2 = fmaxf(-255.0f, fminf(speed_2, 255.0f));
-      speed_3 = fmaxf(-255.0f, fminf(speed_3, 255.0f));
+      speed_roll = fmaxf(-255.0f, fminf(speed_roll, 255.0f));
+      speed_pitch = fmaxf(-255.0f, fminf(speed_pitch, 255.0f));
+      speed_yaw = fmaxf(-255.0f, fminf(speed_yaw, 255.0f));
+      //ESP_LOGI(TAG, "Current pitch speed command: %.3f", speed_2);
 
       // Send to motor control
-      // motor_control_1((int) speed_1, true);
-      // motor_control_2((int) speed_2, true);
-      motor_control_3((int) speed_3, true);
+      // motor_control_1(50, true);
+      motor_control_1((int) speed_roll, true);
+      motor_control_2((int) speed_yaw, true);
+      motor_control_3((int) speed_pitch, true); // WORKS --> WHITE BALANCE
       count += 1;
     }
 
