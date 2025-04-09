@@ -162,6 +162,7 @@ static void ahrs_task(void *arg)
   float kp = 155.0;
   float ki = 0.0;
   float kd = 25.0;
+  int speed = 100;
   float speed_1, speed_2, speed_3; 
   int angle = 1;
   q_des = (struct quaternion){0, 0, 0, 0};
@@ -248,12 +249,15 @@ static void ahrs_task(void *arg)
       speed_1 = fmaxf(-255.0f, fminf(speed_1, 255.0f));
       speed_2 = fmaxf(-255.0f, fminf(speed_2, 255.0f));
       speed_3 = fmaxf(-255.0f, fminf(speed_3, 255.0f));
-
+      
       // Send to motor control
-      motor_control_1((int) speed_1, true);
-      motor_control_2((int) speed_2, true);
-      motor_control_3((int) speed_3, true);
+      if (count % 600 == 0) {
+        speed = speed*(-1);
+      }
       count += 1;
+      motor_control_1(speed, true);
+      motor_control_2(speed, true);
+      motor_control_3(speed, true);
     }
 
     /*  ----  ---- ---- ---- ---- ---- SERVO MOTOR CONTROL ---- ---- ---- ---- ---- ---- --- 
