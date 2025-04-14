@@ -10,7 +10,7 @@
 
 // Motor 2 Config
 #define START_PIN_2   17
-#define DIR_PIN_2     32 // changed from 22... works now... 32
+#define DIR_PIN_2     22 // changed from 22... works now... 32
 #define PWM_PIN_2     26
 #define PWM_CHANNEL_2 LEDC_CHANNEL_2
 

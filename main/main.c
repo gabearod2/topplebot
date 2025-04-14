@@ -155,19 +155,26 @@ static void ahrs_task(void *arg)
   memset(&msg, 0, sizeof(msg)); 
 
   // Initializing variables before the loop:
-  struct quaternion q_des, q_des_inv, q_current, q_err;
+  struct quaternion q_des, q_current, q_err;
   float roll_err, pitch_err, yaw_err;
-  float roll_rate_err, pitch_rate_err, yaw_rate_err;
+  float roll_err_i, pitch_err_i, yaw_err_i;
+  float raw_roll_rate, raw_pitch_rate, raw_yaw_rate;
+  float roll_rate_err = 0.0f;
+  float pitch_rate_err = 0.0f;
+  float yaw_rate_err = 0.0f;
   int count = 0;
-  float kp = 75.0;
-  float ki = 0.0;
-  float kd = 20.0;
+  float kp = 75.0;// 70.0;
+  float ki = 0.27;// 0.25;
+  float kd = 20.0;// 20.0
   float speed_roll = 0;
+  roll_err_i = 0; 
   float speed_pitch = 0;
+  pitch_err_i = 0;
   float speed_yaw = 0; 
-  int angle = 1;
+  yaw_err_i = 0;
   q_des = (struct quaternion){0, 0, 0, 0};
 
+  float alpha = 0.10f;  // You can tune this (0.01 to 0.1 range is typical)
   
   // Loop to update AHRS and assign imu info to mutex
   while (true)
@@ -188,10 +195,16 @@ static void ahrs_task(void *arg)
     // Getting the quaternion from the AHRS algorithm from NED
     ahrs_get_quaternion(&q_current.w, &q_current.x, &q_current.y, &q_current.z);
 
-    roll_rate_err = vg.x;
-    pitch_rate_err = -vg.y;
-    yaw_rate_err = -vg.z;
-    
+    // Getting raw gyroscope values
+    raw_roll_rate = vg.x;
+    raw_pitch_rate = -vg.y;
+    raw_yaw_rate = -vg.z;
+
+    // Applying LPF to each gyroscope reading
+    roll_rate_err = alpha * raw_roll_rate + (1.0f - alpha) * roll_rate_err;
+    pitch_rate_err = alpha * raw_pitch_rate + (1.0f - alpha) * pitch_rate_err;
+    yaw_rate_err = alpha * raw_yaw_rate + (1.0f - alpha) * yaw_rate_err;
+
     /*
     Roll Control - Motor 1
     Pitch Contorl - Motor 3
@@ -228,23 +241,27 @@ static void ahrs_task(void *arg)
       // Quaternion Error
       quaternion_multiply(&q_des, &q_current, &q_err);
 
-      // Error Definition
+      // Position Error Definition
       roll_err = 2*180*q_err.x/3.1415;
       pitch_err = -2*180*q_err.y/3.1415;
       yaw_err = -2*180*q_err.z/3.1415;
 
-      // Determining control input
-      speed_roll = kp*roll_err + kd*roll_rate_err;
-      speed_pitch = kp*pitch_err + kd*pitch_rate_err;
-      speed_yaw = kp*yaw_err + kd*yaw_rate_err;
-      //ESP_LOGI(TAG, "Current pitch_err: %.3f", pitch_err);
-      if (count % 20 == 0)
-      {
-        //ESP_LOGI(TAG, "Omega_x, Omega_y, Omega_z: {x = %.3f,y = %.3f,z = %.3f,}",vg.x,vg.y,vg.z);
-        ESP_LOGI(TAG, "QuaternionError: {%.3f, %.3f, %.3f}", q_err.x, q_err.y, q_err.z);
-      }
-      
+      // Integral Error
+      roll_err_i = roll_err_i + roll_err;
+      pitch_err_i = pitch_err_i + pitch_err;
+      yaw_err_i = yaw_err_i + yaw_err;
 
+      // Determining control input
+      speed_roll = kp*roll_err + kd*roll_rate_err + ki*roll_err_i;
+      speed_pitch = kp*pitch_err + kd*pitch_rate_err + ki*pitch_err_i;
+      speed_yaw = kp*yaw_err + kd*yaw_rate_err + ki*yaw_err_i;
+      
+      //if (count % 20 == 0)
+      //{
+        //ESP_LOGI(TAG, "Omega_x, Omega_y, Omega_z: {x = %.3f,y = %.3f,z = %.3f,}",vg.x,vg.y,vg.z);
+        //ESP_LOGI(TAG, "QuaternionError: {%.3f, %.3f, %.3f}", q_err.x, q_err.y, q_err.z);
+      //}
+      
       // Clamp speed_1 between 0 and 255
       speed_roll = fmaxf(-255.0f, fminf(speed_roll, 255.0f));
       speed_pitch = fmaxf(-255.0f, fminf(speed_pitch, 255.0f));
@@ -252,86 +269,17 @@ static void ahrs_task(void *arg)
       //ESP_LOGI(TAG, "Current pitch speed command: %.3f", speed_2);
 
       // Send to motor control
-      // motor_control_1(50, true);
       motor_control_1((int) speed_roll, true);
       motor_control_2((int) speed_yaw, true);
-      motor_control_3((int) speed_pitch, true); // WORKS --> WHITE BALANCE
+      motor_control_3((int) speed_pitch, true);
       count += 1;
     }
-
-    /*  ----  ---- ---- ---- ---- ---- SERVO MOTOR CONTROL ---- ---- ---- ---- ---- ---- --- 
-    if (count % 600 == 0) {
-      angle = (angle == -90) ? 90 : -90; // Toggle between -90° and 90°
-    }
-    servo_control(angle);
-    */
-
-    /*  ----  ---- ---- ---- ---- ---- MOTOR CODE TESTING ---- ---- ---- ---- ---- ---- ----
-
-    TODO: Implement controller after the motor control is finalized.
-    TODO: Ensure the correct motor and omega and angle are all on the same AXLE!
-    TODO: Wait a few loops to command the motors for safety
-
-    // MOTOR CODE FOR TESTING...
-
-    if (abs(speed) < 100 && abs(speed) > 5) 
-    {
-      motor_control_3(speed, true);  // Move with quaternion
-    } else 
-    {
-      motor_control_3(0, true);    // Stop
-    }
-    ESP_LOGI(TAG, "Current q_x %.3f", q_x);//Commanded Speed 
-    ESP_LOGI(TAG, "Commanded Speed %d", speed);
-
-    // MOTOR CONTROL LOGIC...
-
-    DOES OMEGA VECTOR ORIENTATION CHANGE? ---> should be in the body frame, but lets check this later!
-
-    DO THIS OUTSIDE OF THE LOOP! (THE INITIALIZING)
-    {
-      // Initializing control variables
-      float roll_des, pitch_des, yaw_des;
-      float roll_err, pitch_err, yaw_err;
-      float roll_err_i, pitch_err_i, yaw_err_i;
-      float kp, kd, ki;
-      
-      // Change these to desired angles
-      roll_des = 0;
-      pitch_des = 0;
-      yaw_des = 0;
-      
-      // Tune these parameters
-      kp = 0;
-      kd = 0;
-      ki = 0;
-    }
-    
-    // Finding the current error
-    roll_err = roll - roll_des;
-    pitch_err = pitch - pitch_des;
-    yaw_err = yaw - yaw_des;
-
-    // Aggregate the integral error (Determine the correct omegas)
-    speed_1 = kp*roll_err + kd*omega_x + ki*roll_err_i;
-    speed_2 = kp*pitch_err + kd*omega_y + ki*pitch_err_i;
-    speed_3 = kp*yaw_err + kd*omega_z + ki*yaw_err_i;
-
-    CONSTRAIN THE MOTOR INPUTS
-
-    motor_control_1(speed_1, true);
-    motor_control_2(speed_2, true);
-    motor_control_3(speed_3, true);
-    
-    // The dt will be changing because of the two task priority structure...
-    ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- 
-    */
 
     taskYIELD();
   }
 }
 
-// Function to publish IMU messages
+// Task Function to publish IMU messages
 void imu_callback(void)
 {
   // Pulling the imu information from the mutex
