@@ -76,8 +76,7 @@
         Clone the onboard software repository and navigate into its directory.
     </p>
 
-    <pre>
-    git clone --recurse-submodules https://github.com/gabearod2/topplebot.git &amp;&amp; cd topplebot</pre>
+    <pre>git clone --recurse-submodules https://github.com/gabearod2/topplebot.git &amp;&amp; cd topplebot</pre>
     
     <p>
         Run the following command to follow your USB connections before connecting the ESP32. Take note of the name of the port you see once you plug in the ESP32. 
@@ -173,7 +172,7 @@ calibration_t cal = {
     <p>After setting up the onboard software, it is time to set up the control station. First, clone the <a href="https://github.com/gabearod2/topplebot_station" target="_blank">topplebot_station repo</a>.</p>
         
     <pre>https://github.com/gabearod2/topplebot_station.git &&
-    cd topplebot_station</pre>
+cd topplebot_station</pre>
 
     <p>Now, run the micro-ROS agent:</p>
 
@@ -182,15 +181,15 @@ calibration_t cal = {
     <p>You should see the messages coming from the ToppleBort (if it is correctly configured on your Wi-Fi). Now run the folloing commands in another terminal:</p>
 
     <pre>source /opt/ros/humble/setup.bash &&
-        colcon build --packages-select viz --symlink-install &&
-        source install/setup.bash &&
-        ros2 launch viz topplebot_rviz.launch.py</pre>
+colcon build --packages-select viz --symlink-install &&
+source install/setup.bash &&
+ros2 launch viz topplebot_rviz.launch.py</pre>
 
     <p>RViz should open and you should see the following:</p>
 
     <!-- ToppleBot Odometry Video, Responsive Centered -->
     <p style="text-align: left; padding-top: 20px; padding-bottom: 20px;">
-        <iframe style="width: 1000px; height: 36.5vw;" 
+        <iframe style="width: 960px; height: 36.5vw;" 
                 src="https://www.youtube.com/embed/AF9I7S65SIE" 
                 frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; 
                 gyroscope; picture-in-picture" allowfullscreen></iframe>
