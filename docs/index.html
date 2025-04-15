@@ -77,40 +77,36 @@
     </p>
 
     <pre>
-        git clone --recurse-submodules https://github.com/gabearod2/topplebot.git &amp;&amp; cd topplebot
-    </pre>
+    git clone --recurse-submodules https://github.com/gabearod2/topplebot.git &amp;&amp; cd topplebot</pre>
     
     <p>
         Run the following command to follow your USB connections before connecting the ESP32. Take note of the name of the port you see once you plug in the ESP32. 
     </p>
 
     <pre>
-        sudo dmesg --follow
-    </pre>
+    sudo dmesg --follow</pre>
     
     <p>
         Connect the ESP32 and record the name of the port. Assign privileges to the port with the ESP32 connected to it, using <code>/dev/ttyUSB0</code> as an example (will most likely be the same for you).
     </p>
 
     <pre>
-        sudo chmod 666 /dev/ttyUSB0
-    </pre>
+    sudo chmod 666 /dev/ttyUSB0</pre>
     
     <p>
         First, we are going to configure the ToppleBot for calibration in the menu when we first build the code. So, first you need to build and flash the project to the ESP32.
     </p>
 
     <pre>
-        docker run -it --rm \
-            --user espidf \
-            --volume="/etc/timezone:/etc/timezone:ro" \
-            -v "$(pwd)":/topplebot \
-            -v /dev:/dev \
-            --privileged \
-            --workdir /topplebot \
-            microros/esp-idf-microros:latest \
-            /bin/bash -c "idf.py menuconfig build flash monitor"
-    </pre>
+    docker run -it --rm \
+        --user espidf \
+        --volume="/etc/timezone:/etc/timezone:ro" \
+        -v "$(pwd)":/topplebot \
+        -v /dev:/dev \
+        --privileged \
+        --workdir /topplebot \
+        microros/esp-idf-microros:latest \
+        /bin/bash -c "idf.py menuconfig build flash monitor"</pre>
 
     <p>
         Once the menu opens up in the terminal, complete the procedure listed below. Use the Arrow Keys, ENTER, Q, Esc, and S for navigating the menu. Once you are running the calibration follow the directions in the terminal. After the calibration procedure is complete, exit the serial monitor, using  <code>Ctrl-]</code>. 
@@ -127,21 +123,20 @@
     </p>
 
     <pre>
-        // Calibration Constants for IMU
-        calibration_t cal = {
-          // magnetometer offset from calibration
-          .mag_offset = {.x = -3.046875, .y = 83.751953, .z = -95.554688},
-          .mag_scale = {.x = 0.993345, .y = 0.990171, .z = 1.016908},
-        
-          // accelerometer offsets from calibration
-          .accel_offset = {.x = -0.064261, .y = -0.032425, .z = 0.060752},
-          .accel_scale_lo = {.x = 0.974870, .y = 0.986224, .z = 1.049794},
-          .accel_scale_hi = {.x = -1.022966, .y = -1.014928, .z = -0.971446},
-        
-          // gyroscope bias from calibration, averaged, from 01/18
-          .gyro_bias_offset = {.x = 1.040601, .y = -2.461674, .z = 1.000426}
-        };
-    </pre>
+    // Calibration Constants for IMU
+    calibration_t cal = {
+      // magnetometer offset from calibration
+      .mag_offset = {.x = -3.046875, .y = 83.751953, .z = -95.554688},
+      .mag_scale = {.x = 0.993345, .y = 0.990171, .z = 1.016908},
+    
+      // accelerometer offsets from calibration
+      .accel_offset = {.x = -0.064261, .y = -0.032425, .z = 0.060752},
+      .accel_scale_lo = {.x = 0.974870, .y = 0.986224, .z = 1.049794},
+      .accel_scale_hi = {.x = -1.022966, .y = -1.014928, .z = -0.971446},
+    
+      // gyroscope bias from calibration, averaged, from 01/18
+      .gyro_bias_offset = {.x = 1.040601, .y = -2.461674, .z = 1.000426}
+    };</pre>
     
     <p>
         If you do not know the IP address of your control station, use this command on your control station.
