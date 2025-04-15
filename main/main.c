@@ -74,18 +74,17 @@ TaskHandle_t calibrationTaskHandle = NULL;
 
 // Calibration Constants for IMU
 calibration_t cal = {
+  // magnetometer offset from calibration
+  .mag_offset = {.x = -3.046875, .y = 83.751953, .z = -95.554688},
+  .mag_scale = {.x = 0.993345, .y = 0.990171, .z = 1.016908},
 
-// magnetometer offset from calibration
-.mag_offset = {.x = -3.046875, .y = 83.751953, .z = -95.554688},
-.mag_scale = {.x = 0.993345, .y = 0.990171, .z = 1.016908},
+  // accelerometer offsets from calibration
+  .accel_offset = {.x = -0.064261, .y = -0.032425, .z = 0.060752},
+  .accel_scale_lo = {.x = 0.974870, .y = 0.986224, .z = 1.049794},
+  .accel_scale_hi = {.x = -1.022966, .y = -1.014928, .z = -0.971446},
 
-// accelerometer offsets from calibration
-.accel_offset = {.x = -0.064261, .y = -0.032425, .z = 0.060752},
-.accel_scale_lo = {.x = 0.974870, .y = 0.986224, .z = 1.049794},
-.accel_scale_hi = {.x = -1.022966, .y = -1.014928, .z = -0.971446},
-
-// gyroscope bias from calibration, averaged, from 01/18
-.gyro_bias_offset = {.x = 1.040601, .y = -2.461674, .z = 1.000426}
+  // gyroscope bias from calibration, averaged, from 01/18
+  .gyro_bias_offset = {.x = 1.040601, .y = -2.461674, .z = 1.000426}
 };
 
 struct quaternion {
