@@ -46,46 +46,107 @@
     
 </head>
 <body>
-    <h1>The ToppleBot Project</h1>
+    <h1>
+        The ToppleBot Project
+    </h1>
 
-    <h3><em>A Scalable Robot for Autonomous Balancing Applications</em></h3>
+    <h3>
+        <em>A Scalable Robot for Autonomous Balancing Applications</em>
+    </h3>
 
-    <h2>About</h2>
+    <!-- ABOUT SECTION -->
+    <h2>
+        About
+    </h2>
     
-    <p>The ToppleBot was designed within the Physical Sciences Department of the Embry-Riddle Aeronautical University. It was the senior design project of Kilian Olen (Principal Investigator), Gabriel Rodriguez (Software and Communications), Erin Bader (Design), and William Baker (Electrical). It is built of the successes of CUBEBAS, a previous senior design project that built off of Rem-RC's Balancing Cube design. The ToppleBot expands the project envelope from just balancing to also including scaling designs, visualization, odometry, and toppling capabilities.</p>
+    <p>
+        The ToppleBot was designed within the Physical Sciences Department of the Embry-Riddle Aeronautical University. It was the senior design project of Kilian Olen (Principal Investigator), Gabriel Rodriguez (Software and Communications), Erin Bader (Design), and William Baker (Electrical). It is built of the successes of CUBEBAS, a previous senior design project that built off of Rem-RC's Balancing Cube design. The ToppleBot expands the project envelope from just balancing to also including scaling designs, visualization, odometry, and toppling capabilities.
+    </p>
 
-    <p>The Topplebot's <a href="https://github.com/gabearod2/topplebot" target="_blank">onboard software</a> was forked from <a href="https://github.com/psiphi75/esp-mpu9250" target="_blank">this repository</a>, authored by Simon M. Werner. He integrateed the <a href="https://x-io.co.uk/open-source-imu-and-ahrs-algorithms/" target="_blank">Madgwick AHRS algorithm</a> on the ESP32 with the MPU9250 IMU. The software has been additionally configured to include <a href="https://github.com/micro-ROS/micro_ros_espidf_component.git" target="_blank">micro-ROS for ESP32</a>. This inclusion allows for the visualization and odometry capabilites to be run by the <a href="https://github.com/gabearod2/topplebot_station" target="_blank">control station software</a>, which utilizes the capabilities from <a href="https://docs.ros.org/en/humble/index.html" target="_blank">ROS2 Humble</a>, specifically using the tf2 system for visualization in RViz.</p>
+    <p>
+        The Topplebot's <a href="https://github.com/gabearod2/topplebot" target="_blank">onboard software</a> was forked from <a href="https://github.com/psiphi75/esp-mpu9250" target="_blank">this repository</a>, authored by Simon M. Werner. He integrateed the <a href="https://x-io.co.uk/open-source-imu-and-ahrs-algorithms/" target="_blank">Madgwick AHRS algorithm</a> on the ESP32 with the MPU9250 IMU. The software has been additionally configured to include <a href="https://github.com/micro-ROS/micro_ros_espidf_component.git" target="_blank">micro-ROS for ESP32</a>. This inclusion allows for the visualization and odometry capabilites to be run by the <a href="https://github.com/gabearod2/topplebot_station" target="_blank">control station software</a>, which utilizes the capabilities from <a href="https://docs.ros.org/en/humble/index.html" target="_blank">ROS2 Humble</a>, specifically using the tf2 system for visualization in RViz.
+    </p>
     
-    <h2>Onboard Software Start-Up</h2>
+    <!-- ONBOARD SOFTWARE START-UP SECTION -->
+    <h2>
+        Onboard Software Start-Up
+    </h2>
 
-    <p>Clone this repository:</p>
-    <pre>git clone --recurse-submodules https://github.com/gabearod2/topplebot.git &amp;&amp; cd topplebot</pre>
+    <p>
+        Clone the onboard software repository and navigate into its directory.
+    </p>
+
+    <pre>
+        git clone --recurse-submodules https://github.com/gabearod2/topplebot.git &amp;&amp; cd topplebot
+    </pre>
     
-    <p>Run the following command to follow your USB connections before connecting the ESP32:</p>
-    <pre>sudo dmesg --follow</pre>
+    <p>
+        Run the following command to follow your USB connections before connecting the ESP32. Take note of the name of the port you see once you plug in the ESP32. 
+    </p>
+
+    <pre>
+        sudo dmesg --follow
+    </pre>
     
-    <p>Connect the ESP32 and record the name of the port. Assign privileges to the port with the ESP32 connected to it, using <code>/dev/ttyUSB0</code> as an example:</p>
-    <pre>sudo chmod 666 /dev/ttyUSB0</pre>
+    <p>
+        Connect the ESP32 and record the name of the port. Assign privileges to the port with the ESP32 connected to it, using <code>/dev/ttyUSB0</code> as an example (will most likely be the same for you).
+    </p>
+
+    <pre>
+        sudo chmod 666 /dev/ttyUSB0
+    </pre>
     
-    <p>First, configure the ToppleBot for calibration in the menu:</p>
+    <p>
+        First, we are going to configure the ToppleBot for calibration in the menu when we first build the code. So, first you need to build and flash the project to the ESP32.
+    </p>
+
+    <pre>
+        docker run -it --rm \
+            --user espidf \
+            --volume="/etc/timezone:/etc/timezone:ro" \
+            -v "$(pwd)":/topplebot \
+            -v /dev:/dev \
+            --privileged \
+            --workdir /topplebot \
+            microros/esp-idf-microros:latest \
+            /bin/bash -c "idf.py menuconfig build flash monitor"
+    </pre>
+
+    <p>
+        Once the menu opens up in the terminal, complete the procedure listed below. Use the Arrow Keys, ENTER, Q, Esc, and S for navigating the menu. Once you are running the calibration follow the directions in the terminal. After the calibration procedure is complete, exit the serial monitor, using  <code>Ctrl-]</code>. 
+    </p>
+
     <ul>
         <li>Select "Component Config"</li>
         <li>Go to "MPU9250 Calibration"</li>
         <li>Enable "Calibrate for first run"</li>
     </ul>
-    <p>Build and flash the project to the ESP32:</p>
-    <pre>docker run -it --rm \
-    --user espidf \
-    --volume="/etc/timezone:/etc/timezone:ro" \
-    -v "$(pwd)":/topplebot \
-    -v /dev:/dev \
-    --privileged \
-    --workdir /topplebot \
-    microros/esp-idf-microros:latest \
-    /bin/bash -c "idf.py menuconfig build flash monitor"</pre>
-    <p>(To exit the serial monitor, type <code>Ctrl-]</code>.)</p>
+
+    <p>
+        Armed with the calibration values, plug them into <code>/topplebot/main/main.c</code> lines 75-88.
+    </p>
+
+    <pre>
+        // Calibration Constants for IMU
+        calibration_t cal = {
+          // magnetometer offset from calibration
+          .mag_offset = {.x = -3.046875, .y = 83.751953, .z = -95.554688},
+          .mag_scale = {.x = 0.993345, .y = 0.990171, .z = 1.016908},
+        
+          // accelerometer offsets from calibration
+          .accel_offset = {.x = -0.064261, .y = -0.032425, .z = 0.060752},
+          .accel_scale_lo = {.x = 0.974870, .y = 0.986224, .z = 1.049794},
+          .accel_scale_hi = {.x = -1.022966, .y = -1.014928, .z = -0.971446},
+        
+          // gyroscope bias from calibration, averaged, from 01/18
+          .gyro_bias_offset = {.x = 1.040601, .y = -2.461674, .z = 1.000426}
+        };
+    </pre>
     
-    <p>If you do not know the IP address of your control station, use this command on your control station:</p>
+    <p>
+        If you do not know the IP address of your control station, use this command on your control station.
+    </p>
+
     <pre>ifconfig</pre>
 
     <p>Then, configure the ESP32:</p>
@@ -99,6 +160,7 @@
         <li>Select "micro-ROS settings"</li>
         <li>Enter your IP address, Wi-Fi SSID, and Wi-Fi password.</li>
     </ul>
+
     <p>Finally, build and flash the project again:</p>
     <pre>docker run -it --rm \
     --user espidf \
@@ -113,6 +175,7 @@
     <p>If everything goes well, you will see the connection established and messages being sent.</p>
     <p>You can now disconnect the ESP32 and connect it to an external power source. Micro-ROS has been configured successfully! See more information about calibration <a href="https://github.com/miniben-90/mpu9250" target="_blank">here</a>.</p>
 
+    <!-- ONBOARD SOFTWARE START-UP SECTION -->
     <h2>Control Station Software Start-Up</h2>
 
     <p>After setting up the onboard software, it is time to set up the control station. First, clone the <a href="https://github.com/gabearod2/topplebot_station" target="_blank">topplebot_station repo</a>.</p>
@@ -135,30 +198,28 @@
 
     <!-- ToppleBot Odometry Video, Responsive Centered -->
     <p style="text-align: left; padding-top: 20px; padding-bottom: 20px;">
-        <iframe style="width: 65vw; height: 36.5vw;" 
+        <iframe style="width: 1000px; height: 36.5vw;" 
                 src="https://www.youtube.com/embed/AF9I7S65SIE" 
                 frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; 
                 gyroscope; picture-in-picture" allowfullscreen></iframe>
     </p>
 
     <h2>Motor Selection Calculator</h2>
-    
     <p>Use this calculator to determine your requirements.</p>
 
-    <!-- User Inputs -->
+    <!-- USER INPUTS FOR THE CALCULATOR -->
     <label>Cube Size [m]:                <input type="number" id="cubeSize" step="0.01" value="0.2"></label><br>
     <label>Cube Mass [kg]:               <input type="number" id="cubeMass" step="0.1" value="2.0"></label><br>
     <label>Reaction Wheel Mass [kg]:     <input type="number" id="wheelMass" step="0.1" value="0.5"></label><br>
     <label>Reaction Wheel Radius [m]:    <input type="number" id="wheelRadius" step="0.01" value="0.05"></label><br>
     <label>Target Acceleration [rad/s²]: <input type="number" id="targetAcceleration" step="0.1" value="5.0"></label><br>
-    
     <p>After inputting your values, click the button below.</p>
-
     <button onclick="calculateMotorSpecs()" style="font-size: 20px; padding: 15px 30px; border-radius: 8px;">Calculate Cube Requirements</button>
 
-    <!-- Results -->
+    <!-- RESULTS -->
     <p id="result"></p>
 
+    <!-- SCRIPT FOR MOTOR SPECIFICATIONS-->
     <script>
     function calculateMotorSpecs() 
     {
@@ -188,9 +249,9 @@
             Suggested Motor: Nidec 24H
         `;
     }
+    </script>
 
 
-</script>
 <h2>Odometry System Description</h2>
 
 <p>
@@ -269,6 +330,9 @@
 
     These transforms enable visualization and odometry within RViz, where the robot's orientation and position are expressed with respect to the world frame via the dynamically selected balancing node.
 
-</p>
+    </p>
+    <h2>
+        Order List
+    </h2>
 </body>
 </html>
