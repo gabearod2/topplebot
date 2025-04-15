@@ -159,18 +159,17 @@ static void ahrs_task(void *arg)
   memset(&msg, 0, sizeof(msg)); 
 
   // Initializing variables before the loop:
-  struct quaternion q_des, q_des_inv, q_current, q_err;
-  float roll_err, pitch_err, yaw_err;
-  float roll_rate_err, pitch_rate_err, yaw_rate_err;
+  // We only need IMU message info and info for Toppling
+  // No balacing control info
+  struct quaternion q_current;
   int count = 0;
-  float kp = 155.0;
-  float ki = 0.0;
-  float kd = 25.0;
-  float speed_1, speed_2, speed_3; 
-  int angle = 1;
-  q_des = (struct quaternion){0, 0, 0, 0};
+  float motor_speed = 0; 
+  int servo_angle = 90;
+  float dw_dcount = 0.5f;
+  bool brake_engaged = false;
+  bool has_toppled = false;
+  int toppling_counter = 0;
 
-  
   // Loop to update AHRS and assign imu info to mutex
   while (true)
   {
@@ -190,16 +189,6 @@ static void ahrs_task(void *arg)
     // Getting the quaternion from the AHRS algorithm from NED
     ahrs_get_quaternion(&q_current.w, &q_current.x, &q_current.y, &q_current.z);
 
-    roll_rate_err = -vg.x;
-    pitch_rate_err = -vg.y;
-    yaw_rate_err = -vg.z;
-    
-    /*
-    Roll Control - Motor 2
-    Pitch Contorl - Motor 3
-    Yaw Control - Motor 1
-    */
-
     // Assigning the result to the shared doubles, lock the mutex before updating shared data
     if (xSemaphoreTake(imu_message_mutex, 0))
     {
@@ -209,134 +198,74 @@ static void ahrs_task(void *arg)
       q_z = q_current.z;
       xSemaphoreGive(imu_message_mutex);
     }
-
-    //ESP_LOGI(TAG, "QUATERNION { X:%.3f Y: %.3f Z: %.3f W: %.3f }", q_x,q_y,q_z,q_w);
-
-    if (count < 2000)
+  
+    // Toppling logic state machine
+    if (!brake_engaged) 
     {
-      if (count > 499)
-      {
-        q_des.w += q_current.w;
-        q_des.x += q_current.x;
-        q_des.y += q_current.y;
-        q_des.z += q_current.z;       
+      // Ramp up motor
+      motor_speed = count * dw_dcount;
+      motor_speed = fminf(motor_speed, 255.0f);
+    
+      if (motor_speed >= 255.0f) {
+        toppling_counter++;
+        if (toppling_counter >= 1000) {
+          ESP_LOGI(TAG, "Engaging brake...");
+          brake_engaged = true;
+          toppling_counter = 0;
+          count = 0;
+          motor_speed = 0;
+          xTaskNotify(servoTaskHandle, 90, eSetValueWithOverwrite);  // 90 = engage brake
+          motor_control_1(0, true);
+          vTaskDelay(pdMS_TO_TICKS(1000));
+          continue;  // Skip the rest of loop
+        }
       }
-      count += 1;
-    }
-    else if (count == 2000)
+    } 
+    else 
     {
-      q_des.w = q_des.w / 1500.0f;
-      q_des.x = q_des.x / 1500.0f;
-      q_des.y = q_des.y / 1500.0f;
-      q_des.z = q_des.z / 1500.0f;
-      quaternion_inverse(&q_des);
-      count += 1;
-    }
-    else
-    {
-      // Quaternion Error
-      quaternion_multiply(&q_current, &q_des, &q_err);
-
-      // Error Definition
-      roll_err = -2*180*q_err.x/3.1415;
-      pitch_err = -2*180*q_err.y/3.1415;
-      yaw_err = -2*180*q_err.z/3.1415;
-
-      // Determining control input
-      speed_1 = kp*yaw_err + kd*yaw_rate_err;
-      speed_2 = kp*roll_err + kd*roll_rate_err;
-      speed_3 = kp*pitch_err + kd*pitch_rate_err;
-      //ESP_LOGI(TAG, "Current speed: %.3f", roll);
-
-      // Clamp speed_1 between 0 and 255
-      speed_1 = fmaxf(-255.0f, fminf(speed_1, 255.0f));
-      speed_2 = fmaxf(-255.0f, fminf(speed_2, 255.0f));
-      speed_3 = fmaxf(-255.0f, fminf(speed_3, 255.0f));
-
-      // Send to motor control
-      //motor_control_3((int) speed_1, true);
-      // motor_control_2((int) speed_2, true);
-      //motor_control_3((int) speed_3, true);
-      count += 1;
-    }
-
-    /*
-
-    //  ----  ---- ---- ---- ---- ---- SERVO MOTOR CONTROL ---- ---- ---- ---- ---- ---- --- 
-    if (count % 600 == 0) {
-      angle = (angle == -90) ? 90 : -90; // Toggle between -90° and 90°
-      servo_control(angle);
-      ESP_LOGI(TAG, "Servo Angle: %d", angle);
+      // During brake phase
+      motor_speed = 0;
+      toppling_counter++;
+      if (toppling_counter >= 200) {
+        ESP_LOGI(TAG, "Releasing brake and restarting...");
+        brake_engaged = false;
+        toppling_counter = 0;
+        count = 0;  // Reset ramp
+        xTaskNotify(servoTaskHandle, 0, eSetValueWithOverwrite);  // 0 = release brake
+        vTaskDelay(pdMS_TO_TICKS(1000));
+      }
     }
     
-    */
-
-    /*  ----  ---- ---- ---- ---- ---- MOTOR CODE TESTING ---- ---- ---- ---- ---- ---- ----
-
-    TODO: Implement controller after the motor control is finalized.
-    TODO: Ensure the correct motor and omega and angle are all on the same AXLE!
-    TODO: Wait a few loops to command the motors for safety
-
-    // MOTOR CODE FOR TESTING...
-
-    if (abs(speed) < 100 && abs(speed) > 5) 
-    {
-      motor_control_3(speed, true);  // Move with quaternion
-    } else 
-    {
-      motor_control_3(0, true);    // Stop
-    }
-    ESP_LOGI(TAG, "Current q_x %.3f", q_x);//Commanded Speed 
-    ESP_LOGI(TAG, "Commanded Speed %d", speed);
-
-    // MOTOR CONTROL LOGIC...
-
-    DOES OMEGA VECTOR ORIENTATION CHANGE? ---> should be in the body frame, but lets check this later!
-
-    DO THIS OUTSIDE OF THE LOOP! (THE INITIALIZING)
-    {
-      // Initializing control variables
-      float roll_des, pitch_des, yaw_des;
-      float roll_err, pitch_err, yaw_err;
-      float roll_err_i, pitch_err_i, yaw_err_i;
-      float kp, kd, ki;
-      
-      // Change these to desired angles
-      roll_des = 0;
-      pitch_des = 0;
-      yaw_des = 0;
-      
-      // Tune these parameters
-      kp = 0;
-      kd = 0;
-      ki = 0;
-    }
-    
-    // Finding the current error
-    roll_err = roll - roll_des;
-    pitch_err = pitch - pitch_des;
-    yaw_err = yaw - yaw_des;
-
-    // Aggregate the integral error (Determine the correct omegas)
-    speed_1 = kp*roll_err + kd*omega_x + ki*roll_err_i;
-    speed_2 = kp*pitch_err + kd*omega_y + ki*pitch_err_i;
-    speed_3 = kp*yaw_err + kd*omega_z + ki*yaw_err_i;
-
-    CONSTRAIN THE MOTOR INPUTS
-
-    motor_control_1(speed_1, true);
-    motor_control_2(speed_2, true);
-    motor_control_3(speed_3, true);
-    
-    // The dt will be changing because of the two task priority structure...
-    ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- 
-    */
-
+    // Always apply motor command and increment counter
+    motor_control_1((int)motor_speed, true);
+    count++;
     taskYIELD();
   }
 }
 
-// Function to publish IMU messages
+// Task Function to Engage the Braking Mechanism
+static void servo_control_task(void *arg)
+{
+  int current_angle = 0;
+  uint32_t received_angle;
+  TickType_t last_wake_time = xTaskGetTickCount();
+
+  while (1) {
+    // Check for new target angle
+    if (xTaskNotifyWait(0x00, 0xFFFFFFFF, &received_angle, 0) == pdPASS) {
+      current_angle = (int)received_angle;
+      ESP_LOGI("SERVO", "Received new target angle: %d", current_angle);
+    }
+
+    // Refresh PWM to hold/move servo
+    servo_control(current_angle);  // Must send pulse every 20ms
+    vTaskDelayUntil(&last_wake_time, pdMS_TO_TICKS(20));  // 50 Hz
+  }
+}
+
+
+
+// Task Function to publish IMU messages
 void imu_callback(void)
 {
   // Pulling the imu information from the mutex
@@ -425,19 +354,7 @@ static void micro_ros_task(void *arg)
   vTaskDelete(NULL); 
 }
 
-static void servo_control_task(void *arg)
-{
-  const TickType_t delay = pdMS_TO_TICKS(20);  // 50 Hz refresh
-int angle = -90;
-while (1) {
-  servo_control(angle);
-  ESP_LOGI("SERVO", "Set angle %d", angle);
-  angle = (angle == -1) ? 1 : -1;
-  vTaskDelay(pdMS_TO_TICKS(1000));  // 1 Hz toggle
-}
-}
-
-// Task to calbiration the MPU9250
+// Task Function to Calibrate the MPU9250
 static void calibration_task(void *arg)
 {
   ESP_LOGI(TAG, "Calibration mode is enabled. Running calibration...");
@@ -587,5 +504,16 @@ void app_main(void)
       CONFIG_SERVO_APP_TASK_PRIO,
       &servoTaskHandle,
       tskNO_AFFINITY);
+
+    // Give tasks time to initialize
+    vTaskDelay(pdMS_TO_TICKS(100));
+
+    // Send brake position to servo before loop logic kicks in
+    servo_control(0);  // Start braked
+    ESP_LOGI(TAG, "Set initial servo angle to 0 (brake engaged)");
+
+    // Optional: update control task too
+    xTaskNotify(servoTaskHandle, 0, eSetValueWithOverwrite);
+
   #endif
 }
