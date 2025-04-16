@@ -42,6 +42,12 @@
             width: 100%;
             margin: 40px 0 10px 0; /* top right bottom left */
         }
+        hr.subsection-divider{
+            border: none;
+            border-top: 1px solid #666;
+            width: 100%;
+            margin: 10px 0 10px 0; /* top right bottom left */
+        }
     </style>
 
     <!-- MathJax for LaTeX Equation Rendering -->
@@ -71,14 +77,33 @@
     </p>
 
     <p>
-        The Topplebot's <a href="https://github.com/gabearod2/topplebot" target="_blank">onboard software</a> was forked from <a href="https://github.com/psiphi75/esp-mpu9250" target="_blank">this repository</a>, authored by Simon M. Werner. He integrateed the <a href="https://x-io.co.uk/open-source-imu-and-ahrs-algorithms/" target="_blank">Madgwick AHRS algorithm</a> on the ESP32 with the MPU9250 IMU. The software has been additionally configured to include <a href="https://github.com/micro-ROS/micro_ros_espidf_component.git" target="_blank">micro-ROS for ESP32</a>. This inclusion allows for the visualization and odometry capabilites to be run by the <a href="https://github.com/gabearod2/topplebot_station" target="_blank">control station software</a>, which utilizes the capabilities from <a href="https://docs.ros.org/en/humble/index.html" target="_blank">ROS2 Humble</a>, specifically using the tf2 system for visualization in RViz.
+        The ToppleBot's <a href="https://github.com/gabearod2/topplebot" target="_blank">onboard software</a> was forked from <a href="https://github.com/psiphi75/esp-mpu9250" target="_blank">this repository</a>, authored by Simon M. Werner. He integrateed the <a href="https://x-io.co.uk/open-source-imu-and-ahrs-algorithms/" target="_blank">Madgwick AHRS algorithm</a> on the ESP32 with the MPU9250 IMU. The software has been additionally configured to include <a href="https://github.com/micro-ROS/micro_ros_espidf_component.git" target="_blank">micro-ROS for ESP32</a>. This inclusion allows for the visualization and odometry capabilites to be run by the <a href="https://github.com/gabearod2/topplebot_station" target="_blank">control station software</a>, which utilizes the capabilities from <a href="https://docs.ros.org/en/humble/index.html" target="_blank">ROS2 Humble</a>, specifically using the tf2 system for visualization in RViz.
     </p>
+
+    <!-- SOFTWARE CONCEPTS -->
+    <h2>
+        Software Structure and Concepts
+    </h2>
+
+    <p>
+        The ToppleBot's software, as mentioned in the About section, is split into the control station's repo and the onboard software repo. The onboard software is split into different branches. Their names and purposes are defined below:
+    </p>
+
+    <ul>
+        <li>master</li>
+        <li>pid_corner</li>
+        <li>topple_demo</li>
+    </ul>
     
     <!-- ONBOARD SOFTWARE START-UP SECTION -->
     <hr class="section-divider">
     <h2>
-        Onboard Software Start-Up
+        Start-Up
     </h2>
+    <hr class="subsection-divider">
+    <h3>
+        Onboard Software
+    </h3>
 
     <p>
         Clone the onboard software repository and navigate into its directory.
@@ -113,7 +138,7 @@
     /bin/bash -c "idf.py menuconfig build flash monitor"</pre>
 
     <p>
-        Once the menu opens up in the terminal, complete the procedure listed below. Use the Arrow Keys, ENTER, Q, Esc, and S for navigating the menu. Once you are running the calibration follow the directions in the terminal. After the calibration procedure is complete, exit the serial monitor, using  <code>Ctrl-]</code>. 
+        Once the menu opens up in the terminal, complete the procedure listed below. Use the <code>Arrow Keys</code>, <code>ENTER</code>, <code>Q</code>, <code>Esc</code>, and <code>S</code> for navigating the menu. Once you are running the calibration, follow the directions in the terminal. After the calibration procedure is complete, exit the serial monitor, using <code>Ctrl-]</code>. 
     </p>
 
     <ul>
@@ -123,7 +148,7 @@
     </ul>
 
     <p>
-        Armed with the calibration values, plug them into <code>/topplebot/main/main.c</code> lines 75-88.
+        Now, having the calibration values, plug them into <code>/topplebot/main/main.c</code> lines 75-88. They should look similar to the following code snippet. If your GPIO pins for the IMU are different, you have to edit them in the main as well. 
     </p>
 
     <pre>// Calibration Constants for IMU
@@ -148,53 +173,57 @@ calibration_t cal = {
 
     <pre>ifconfig</pre>
 
-    <p>Then, configure the ESP32:</p>
-    <ul>
-        <li>Set the corresponding calibration offsets in <code>main.c</code>.</li>
-        <li>Modify GPIO pins if needed.</li>
-    </ul>
-    <p>Next, disable calibration and configure Micro-ROS:</p>
+    <p>
+        You should now have everything you need to run the ToppleBot's onbord software. So, we will build and flash the project again.
+    </p>
+
+    <pre>docker run -it --rm \
+        --user espidf \
+        --volume="/etc/timezone:/etc/timezone:ro" \
+        -v "$(pwd)":/topplebot \
+        -v /dev:/dev \
+        --privileged \
+        --workdir /topplebot \
+        microros/esp-idf-microros:latest \
+        /bin/bash -c "idf.py menuconfig build flash monitor"</pre>
+
+    <p>
+        Once in the menu, you will have to configure your micro-ROS settings.
+    </p>
+
     <ul>
         <li>Go to "Component Config" &rarr; "MPU9250 Calibration" &rarr; Turn off calibration.</li>
         <li>Select "micro-ROS settings"</li>
         <li>Enter your IP address, Wi-Fi SSID, and Wi-Fi password.</li>
     </ul>
 
-    <p>Finally, build and flash the project again:</p>
-    <pre>docker run -it --rm \
-    --user espidf \
-    --volume="/etc/timezone:/etc/timezone:ro" \
-    -v "$(pwd)":/topplebot \
-    -v /dev:/dev \
-    --privileged \
-    --workdir /topplebot \
-    microros/esp-idf-microros:latest \
-    /bin/bash -c "idf.py menuconfig build flash monitor"</pre>
-    
-    <p>If everything goes well, you will see the connection established and messages being sent.</p>
-    <p>You can now disconnect the ESP32 and connect it to an external power source. Micro-ROS has been configured successfully! See more information about calibration <a href="https://github.com/miniben-90/mpu9250" target="_blank">here</a>.</p>
+    <p>
+        You can now disconnect the ESP32 and connect it to an external power source. Micro-ROS has been configured successfully! See more information about calibration <a href="https://github.com/miniben-90/mpu9250" target="_blank">here</a>.
+    </p>
 
     <!-- ONBOARD SOFTWARE START-UP SECTION -->
-    <hr class="section-divider">
-    <h2>Control Station Software Start-Up</h2>
+    <hr class="subsection-divider">
+    <h3>
+        Control Station Software Start-Up
+    </h3>
 
     <p>After setting up the onboard software, it is time to set up the control station. First, clone the <a href="https://github.com/gabearod2/topplebot_station" target="_blank">topplebot_station repo</a>.</p>
         
     <pre>https://github.com/gabearod2/topplebot_station.git &&
 cd topplebot_station</pre>
 
-    <p>Now, run the micro-ROS agent:</p>
+    <p>Before turning the ToppleBot on, you can start running the micro-ROS agent:</p>
 
     <pre>docker run -it --rm --net=host microros/micro-ros-agent:humble udp4 --port 8888 -v6</pre>
 
-    <p>You should see the messages coming from the ToppleBort (if it is correctly configured on your Wi-Fi). Now run the folloing commands in another terminal:</p>
+    <p>If the ToppleBot is on, you should see the messages coming from the ToppleBot (if it is correctly configured on your Wi-Fi). If you would like to run the visualization, run the following commands in another terminal.</p>
 
     <pre>source /opt/ros/humble/setup.bash &&
 colcon build --packages-select viz --symlink-install &&
 source install/setup.bash &&
 ros2 launch viz topplebot_rviz.launch.py</pre>
 
-    <p>RViz should open and you should see the following:</p>
+    <p>RViz should open and you should see something similar the following:</p>
 
     <!-- ToppleBot Odometry Video, Responsive Centered -->
     <p style="text-align: left; padding-top: 20px; padding-bottom: 20px;">
