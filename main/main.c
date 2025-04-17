@@ -163,9 +163,9 @@ static void ahrs_task(void *arg)
   float pitch_rate_err = 0.0f;
   float yaw_rate_err = 0.0f;
   int count = 0;
-  float kp = 75.0;// 70.0;
-  float ki = 0.27;// 0.25;
-  float kd = 20.0;// 20.0
+  float kp = 76.0;// 70.0;
+  float ki = 0.25;// 0.25;
+  float kd = 21.0;// 20.0
   float speed_roll = 0;
   roll_err_i = 0; 
   float speed_pitch = 0;
@@ -246,10 +246,18 @@ static void ahrs_task(void *arg)
       pitch_err = -2*180*q_err.y/3.1415;
       yaw_err = -2*180*q_err.z/3.1415;
 
+      // Emergency shutdown condition: if any angle exceeds ±20 degrees
+      bool shutdown = fabsf(roll_err) > 20.0f || fabsf(pitch_err) > 20.0f || fabsf(yaw_err) > 20.0f;
+
       // Integral Error
       roll_err_i = roll_err_i + roll_err;
       pitch_err_i = pitch_err_i + pitch_err;
       yaw_err_i = yaw_err_i + yaw_err;
+
+      // Clamp the integral contributions
+      roll_err_i = fmaxf(-200.0f / ki, fminf(roll_err_i, 200.0f / ki));
+      pitch_err_i = fmaxf(-200.0f / ki, fminf(pitch_err_i, 200.0f / ki));
+      yaw_err_i = fmaxf(-200.0f / ki, fminf(yaw_err_i, 200.0f / ki));
 
       // Determining control input
       speed_roll = kp*roll_err + kd*roll_rate_err + ki*roll_err_i;
@@ -262,16 +270,22 @@ static void ahrs_task(void *arg)
         //ESP_LOGI(TAG, "QuaternionError: {%.3f, %.3f, %.3f}", q_err.x, q_err.y, q_err.z);
       //}
       
-      // Clamp speed_1 between 0 and 255
-      speed_roll = fmaxf(-255.0f, fminf(speed_roll, 255.0f));
-      speed_pitch = fmaxf(-255.0f, fminf(speed_pitch, 255.0f));
-      speed_yaw = fmaxf(-255.0f, fminf(speed_yaw, 255.0f));
-      //ESP_LOGI(TAG, "Current pitch speed command: %.3f", speed_2);
-
-      // Send to motor control
-      motor_control_1((int) speed_roll, true);
-      motor_control_2((int) speed_yaw, true);
-      motor_control_3((int) speed_pitch, true);
+      if (shutdown) {
+        motor_control_1(0, false); // or false to brake if supported
+        motor_control_2(0, false);
+        motor_control_3(0, false);
+        ESP_LOGW(TAG, "MOTORS SHUT DOWN: Orientation error exceeded safety threshold.");
+      } else {
+        // Clamp final command to valid PWM range
+        speed_roll  = fmaxf(-255.0f, fminf(speed_roll, 255.0f));
+        speed_pitch = fmaxf(-255.0f, fminf(speed_pitch, 255.0f));
+        speed_yaw   = fmaxf(-255.0f, fminf(speed_yaw, 255.0f));
+      
+        // Send to motors
+        motor_control_1((int) speed_roll, true);
+        motor_control_2((int) speed_yaw, true);
+        motor_control_3((int) speed_pitch, true);
+      }      
       count += 1;
     }
 
