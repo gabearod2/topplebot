@@ -163,9 +163,9 @@ static void ahrs_task(void *arg)
   float pitch_rate_err = 0.0f;
   float yaw_rate_err = 0.0f;
   int count = 0;
-  float kp = 76.0;// 70.0;
-  float ki = 0.25;// 0.25;
-  float kd = 21.0;// 20.0
+  float kp = 60.0;// 76.0
+  float ki = 3.5;// 0.25
+  float kd = 21.0;// 21.0
   float speed_roll = 0;
   roll_err_i = 0; 
   float speed_pitch = 0;
@@ -223,11 +223,11 @@ static void ahrs_task(void *arg)
 
     //ESP_LOGI(TAG, "QUATERNION { X:%.3f Y: %.3f Z: %.3f W: %.3f }", q_x,q_y,q_z,q_w);
 
-    if (count < 2000)
+    if (count < 7500)
     {
       count += 1;
     }
-    else if (count == 2000)
+    else if (count == 7500)
     {
       q_des.w = q_current.w;
       q_des.x = q_current.x;
@@ -250,14 +250,23 @@ static void ahrs_task(void *arg)
       bool shutdown = fabsf(roll_err) > 20.0f || fabsf(pitch_err) > 20.0f || fabsf(yaw_err) > 20.0f;
 
       // Integral Error
-      roll_err_i = roll_err_i + roll_err;
-      pitch_err_i = pitch_err_i + pitch_err;
-      yaw_err_i = yaw_err_i + yaw_err;
-
+      //if (fabsf(roll_err) > 1.0f || fabsf(pitch_err) >1.0f || fabsf(yaw_err) > 5.0f)
+      //{
+        roll_err_i = roll_err_i + roll_err;
+        pitch_err_i = pitch_err_i + pitch_err;
+        yaw_err_i = yaw_err_i + yaw_err;
+      ///}
+      //else
+      //{
+        //roll_err_i = 0;
+        //pitch_err_i = 0;
+        //yaw_err_i = 0;
+      //}
+      
       // Clamp the integral contributions
-      roll_err_i = fmaxf(-200.0f / ki, fminf(roll_err_i, 200.0f / ki));
-      pitch_err_i = fmaxf(-200.0f / ki, fminf(pitch_err_i, 200.0f / ki));
-      yaw_err_i = fmaxf(-200.0f / ki, fminf(yaw_err_i, 200.0f / ki));
+      roll_err_i = fmaxf(-255.0f / ki, fminf(roll_err_i, 255.0f / ki));
+      pitch_err_i = fmaxf(-255.0f / ki, fminf(pitch_err_i, 255.0f / ki));
+      yaw_err_i = fmaxf(-255.0f / ki, fminf(yaw_err_i, 255.0f / ki));
 
       // Determining control input
       speed_roll = kp*roll_err + kd*roll_rate_err + ki*roll_err_i;
@@ -267,7 +276,7 @@ static void ahrs_task(void *arg)
       //if (count % 20 == 0)
       //{
         //ESP_LOGI(TAG, "Omega_x, Omega_y, Omega_z: {x = %.3f,y = %.3f,z = %.3f,}",vg.x,vg.y,vg.z);
-        //ESP_LOGI(TAG, "QuaternionError: {%.3f, %.3f, %.3f}", q_err.x, q_err.y, q_err.z);
+        //ESP_LOGI(TAG, "Quaternion: {%.3f, %.3f, %.3f}", q_current.x, q_current.y, q_current.z);
       //}
       
       if (shutdown) {
@@ -275,6 +284,7 @@ static void ahrs_task(void *arg)
         motor_control_2(0, false);
         motor_control_3(0, false);
         ESP_LOGW(TAG, "MOTORS SHUT DOWN: Orientation error exceeded safety threshold.");
+        roll_err_i = 0;
       } else {
         // Clamp final command to valid PWM range
         speed_roll  = fmaxf(-255.0f, fminf(speed_roll, 255.0f));
