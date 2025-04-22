@@ -163,8 +163,8 @@ static void ahrs_task(void *arg)
   float pitch_rate_err = 0.0f;
   float yaw_rate_err = 0.0f;
   int count = 0;
-  float kp = 60.0;// 76.0
-  float ki = 3.5;// 0.25
+  float kp = 72.0;// 76.0
+  float ki = 3.0;// 0.25
   float kd = 21.0;// 21.0
   float speed_roll = 0;
   roll_err_i = 0; 
@@ -173,8 +173,9 @@ static void ahrs_task(void *arg)
   float speed_yaw = 0; 
   yaw_err_i = 0;
   q_des = (struct quaternion){0, 0, 0, 0};
+  const float decay = 0.99f;
 
-  float alpha = 0.10f;  // You can tune this (0.01 to 0.1 range is typical)
+  float alpha = 0.15f;  // You can tune this (0.01 to 0.1 range is typical)
   
   // Loop to update AHRS and assign imu info to mutex
   while (true)
@@ -252,9 +253,13 @@ static void ahrs_task(void *arg)
       // Integral Error
       //if (fabsf(roll_err) > 1.0f || fabsf(pitch_err) >1.0f || fabsf(yaw_err) > 5.0f)
       //{
-        roll_err_i = roll_err_i + roll_err;
-        pitch_err_i = pitch_err_i + pitch_err;
-        yaw_err_i = yaw_err_i + yaw_err;
+
+          roll_err_i = roll_err_i + roll_err;
+        
+          pitch_err_i = pitch_err_i + pitch_err;
+
+          yaw_err_i = yaw_err_i + yaw_err;
+
       ///}
       //else
       //{
