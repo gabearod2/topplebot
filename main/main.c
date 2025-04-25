@@ -224,11 +224,11 @@ static void ahrs_task(void *arg)
 
     //ESP_LOGI(TAG, "QUATERNION { X:%.3f Y: %.3f Z: %.3f W: %.3f }", q_x,q_y,q_z,q_w);
 
-    if (count < 7500)
+    if (count < 2500)
     {
       count += 1;
     }
-    else if (count == 7500)
+    else if (count == 2500)
     {
       q_des.w = q_current.w;
       q_des.x = q_current.x;
